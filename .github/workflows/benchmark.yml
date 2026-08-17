@@ -1,0 +1,61 @@
+name: Benchmarks # reusable: run BenchmarkDotNet and store results
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: "Benchmark project directory"
+        required: true
+        type: string
+      results-dir:
+        description: "Directory with the exported json report"
+        type: string
+        default: "benchmarks/results"
+      dotnet-version:
+        type: string
+        default: "8.0.x"
+      gh-pages-branch:
+        type: string
+        default: main
+      data-dir:
+        type: string
+        default: docs/dev/bench
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Run benchmark
+        run: dotnet run -c Release --exporters json --filter '*'
+        working-directory: ${{ inputs.project }}
+
+      - name: Find summary report
+        id: summary
+        run: |
+          file=$(basename "$(find "${{ inputs.results-dir }}" -type f -name '*report-full-compressed.json' | head -n 1)")
+          echo "report=${{ inputs.results-dir }}/$file" >> $GITHUB_OUTPUT
+
+      - name: Store benchmark result
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          name: Benchmark.Net
+          tool: "benchmarkdotnet"
+          output-file-path: ${{ steps.summary.outputs.report }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: "200%"
+          comment-on-alert: true
+          gh-pages-branch: ${{ inputs.gh-pages-branch }}
+          benchmark-data-dir-path: ${{ inputs.data-dir }}

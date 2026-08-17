@@ -1,0 +1,88 @@
+name: .NET build # reusable: build + test + optional pack, one configuration
+
+on:
+  workflow_call:
+    inputs:
+      solution:
+        description: "Path to the solution or project"
+        required: true
+        type: string
+      configuration:
+        description: "Debug or Release"
+        type: string
+        default: Debug
+      dotnet-version:
+        type: string
+        default: "8.0.x"
+      ref:
+        description: "Git ref to build (defaults to the triggering ref)"
+        type: string
+        default: ""
+      artifacts:
+        description: "Pack and upload binaries + packages"
+        type: boolean
+        default: false
+      binaries-path:
+        description: "Directory holding the compiled output to upload (config appended)"
+        type: string
+        default: "asm/SMath/bin"
+      packages-dir:
+        description: "Output directory for nupkg files"
+        type: string
+        default: "packages"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Restore dependencies
+        run: dotnet restore "${{ inputs.solution }}"
+
+      - name: Build ${{ inputs.configuration }}
+        run: dotnet build "${{ inputs.solution }}" --no-restore -c ${{ inputs.configuration }} -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} --logger "trx;LogFileName=test-results.trx"
+
+      - name: Test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Tests ${{ inputs.configuration }}
+          path: "**/test-results.trx"
+          reporter: dotnet-trx
+          fail-on-error: true
+
+      - name: Pack
+        if: inputs.artifacts
+        run: dotnet pack "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} -o "${{ inputs.packages-dir }}" -p:ContinuousIntegrationBuild=true
+
+      - name: Upload artifact - binaries
+        if: inputs.artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: binaries
+          path: "${{ inputs.binaries-path }}/${{ inputs.configuration }}"
+          retention-days: 90
+
+      - name: Upload artifact - packages
+        if: inputs.artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: "${{ inputs.packages-dir }}"
+          retention-days: 90

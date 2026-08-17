@@ -1,0 +1,29 @@
+name: Self test # lint the reusable workflows and the composite action
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/**"
+  pull_request:
+    paths:
+      - ".github/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          fail-on-error: true

@@ -1,0 +1,26 @@
+name: History cleanup # reusable: prune old workflow runs
+
+on:
+  workflow_call:
+    inputs:
+      retain-days:
+        type: number
+        default: 30
+      keep-minimum-runs:
+        type: number
+        default: 6
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: ${{ inputs.retain-days }}
+          keep_minimum_runs: ${{ inputs.keep-minimum-runs }}

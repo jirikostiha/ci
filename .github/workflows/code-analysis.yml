@@ -1,0 +1,38 @@
+name: Code analysis # reusable: CodeQL
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        default: csharp
+      dotnet-version:
+        type: string
+        default: "8.0.x"
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ inputs.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: CodeQL analysis
+        uses: github/codeql-action/analyze@v4

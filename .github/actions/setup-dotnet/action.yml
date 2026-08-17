@@ -1,0 +1,19 @@
+name: Setup .NET
+description: Installs the .NET SDK and prints diagnostic info. Single source of truth for the toolchain.
+
+inputs:
+  dotnet-version:
+    description: ".NET SDK version(s), newline separated"
+    default: "8.0.x"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: .NET info
+      run: dotnet --info
+      shell: bash

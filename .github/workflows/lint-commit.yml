@@ -1,0 +1,30 @@
+name: Commit lint # reusable: commitlint + fixup guard
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: "commitlint config file"
+        type: string
+        default: .github/commitlint_config.mjs
+
+jobs:
+  commit-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Lint commit message
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: ${{ inputs.config }}
+
+      - name: Check no !fixup commits
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: 13rac1/block-fixup-merge-action@v2.0.0

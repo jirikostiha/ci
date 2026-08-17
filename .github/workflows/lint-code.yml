@@ -1,0 +1,29 @@
+name: Code lint # reusable: dotnet format with auto fix
+
+on:
+  workflow_call:
+    inputs:
+      dir:
+        description: "Directory to format"
+        type: string
+        default: src
+
+jobs:
+  run-linters:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run code linters with auto fix
+        uses: wearerequired/lint-action@v3
+        with:
+          commit_message: "style: code style issues with ${linter}"
+          dotnet_format: true
+          dotnet_format_dir: ${{ inputs.dir }}
+          dotnet_format_auto_fix: true
+          auto_fix: true
+          git_name: "C# linter"

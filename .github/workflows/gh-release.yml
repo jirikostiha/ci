@@ -30,10 +30,7 @@ jobs:
           path: build
 
       - name: Zip binaries
-        uses: vimtor/action-zip@v1
-        with:
-          files: build
-          dest: binaries.zip
+        run: zip -r binaries.zip build
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3

@@ -30,7 +30,7 @@ jobs:
           path: build
 
       - name: Zip binaries
-        run: zip -r binaries.zip build
+        run: (cd build && zip -r ../binaries.zip .)
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -49,4 +49,4 @@ jobs:
           keep_latest: ${{ inputs.keep-latest }}
           delete_tags: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.release-token || secrets.GITHUB_TOKEN }}

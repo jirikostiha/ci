@@ -7,6 +7,9 @@ on:
         description: "Directory to format"
         type: string
         default: src
+      dotnet-version:
+        type: string
+        default: "8.0.x"
 
 jobs:
   run-linters:
@@ -17,6 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
 
       - name: Run code linters with auto fix
         uses: wearerequired/lint-action@v3

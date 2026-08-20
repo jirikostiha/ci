@@ -10,7 +10,7 @@ on:
       results-dir:
         description: "Directory with the exported json report"
         type: string
-        default: "benchmarks/results"
+        default: "BenchmarkDotNet.Artifacts/results"
       dotnet-version:
         type: string
         default: "8.0.x"
@@ -44,8 +44,12 @@ jobs:
       - name: Find summary report
         id: summary
         run: |
-          file=$(basename "$(find "${{ inputs.results-dir }}" -type f -name '*report-full-compressed.json' | head -n 1)")
-          echo "report=${{ inputs.results-dir }}/$file" >> $GITHUB_OUTPUT
+          report=$(find "${{ inputs.results-dir }}" -type f -name '*report-full-compressed.json' | head -n 1)
+          if [ -z "$report" ]; then
+            echo "::error::No benchmark report (*report-full-compressed.json) found in ${{ inputs.results-dir }}"
+            exit 1
+          fi
+          echo "report=$report" >> $GITHUB_OUTPUT
 
       - name: Store benchmark result
         uses: rhysd/github-action-benchmark@v1

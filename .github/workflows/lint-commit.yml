@@ -26,5 +26,5 @@ jobs:
           configFile: ${{ inputs.config }}
 
       - name: Check no !fixup commits
-        if: ${{ github.event_name == 'pull_request' }}
+        if: github.event_name == 'pull_request'
         uses: 13rac1/block-fixup-merge-action@v2.0.0

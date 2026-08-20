@@ -52,7 +52,7 @@ on:
         options: [Debug, Release]
         default: Debug
   push:
-    paths: ["src/**", "!src/**.slnx"]
+    paths: ["src/**"]
 
 jobs:
   build:

@@ -25,7 +25,7 @@ on:
       binaries-path:
         description: "Directory holding the compiled output to upload (config appended)"
         type: string
-        default: "asm/SMath/bin"
+        default: "bin"
       packages-dir:
         description: "Output directory for nupkg files"
         type: string

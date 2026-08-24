@@ -1,0 +1,84 @@
+name: Documentation # reusable: build DocFX documentation and deploy to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      docfx-json:
+        description: "Path to docfx.json"
+        type: string
+        default: "docs/web/docfx.json"
+      output-dir:
+        description: "DocFX output directory"
+        type: string
+        default: "docs/web/_site"
+      dotnet-version:
+        description: "Dotnet version"
+        type: string
+        default: |
+          8.0.x
+          9.0.x
+          10.0.x
+      include-benchmarks:
+        description: "Whether to include benchmark charts from gh-pages branch"
+        type: boolean
+        default: true
+      gh-pages-branch:
+        description: "Branch with benchmark results"
+        type: string
+        default: "gh-pages"
+      benchmarks-dir:
+        description: "Destination folder inside site for benchmarks"
+        type: string
+        default: "benchmarks"
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Install DocFX
+        run: dotnet tool install -g docfx
+
+      - name: Build Documentation
+        run: docfx ${{ inputs.docfx-json }}
+
+      - name: Integrate benchmarks from gh-pages
+        if: ${{ inputs.include-benchmarks }}
+        run: |
+          if git fetch origin ${{ inputs.gh-pages-branch }} --depth=1 2>/dev/null; then
+            echo "Found branch ${{ inputs.gh-pages-branch }}, exporting benchmark dashboard..."
+            mkdir -p "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}"
+            git --work-tree="${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}" checkout FETCH_HEAD -- .
+            echo "Benchmarks successfully integrated into ${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}"
+          else
+            echo "Branch ${{ inputs.gh-pages-branch }} not found or empty. Skipping benchmark integration."
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.output-dir }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

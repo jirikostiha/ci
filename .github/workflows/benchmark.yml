@@ -16,10 +16,10 @@ on:
         default: "8.0.x"
       gh-pages-branch:
         type: string
-        default: main
+        default: gh-pages
       data-dir:
         type: string
-        default: docs/dev/bench
+        default: dev/bench
 
 jobs:
   benchmark:

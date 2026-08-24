@@ -66,9 +66,16 @@ jobs:
           if git fetch origin ${{ inputs.gh-pages-branch }} --depth=1 2>/dev/null; then
             echo "Found branch ${{ inputs.gh-pages-branch }}, checking for benchmark dashboard..."
             git --work-tree="${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}" checkout FETCH_HEAD -- . 2>/dev/null || true
+            
+            # If rhysd/github-action-benchmark saved dashboard in dev/bench, copy directly to benchmarks root
+            if [ -f "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}/dev/bench/index.html" ]; then
+              echo "Flattening dev/bench dashboard to root of ${{ inputs.benchmarks-dir }}..."
+              cp -rf "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}/dev/bench/"* "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}/"
+            fi
           fi
+
           if [ ! -f "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}/index.html" ]; then
-            echo "No index.html found in gh-pages yet, copying fallback page..."
+            echo "No index.html found, copying fallback page..."
             if [ -f "docs/web/benchmarks/index.html" ]; then
               cp -f "docs/web/benchmarks/index.html" "${{ inputs.output-dir }}/${{ inputs.benchmarks-dir }}/index.html"
             fi

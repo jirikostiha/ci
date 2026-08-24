@@ -34,11 +34,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Ensure gh-pages branch exists
+        run: |
+          if ! git ls-remote --exit-code --heads origin ${{ inputs.gh-pages-branch }}; then
+            echo "Branch ${{ inputs.gh-pages-branch }} does not exist on remote. Initializing orphan branch..."
+            git checkout --orphan ${{ inputs.gh-pages-branch }}
+            git rm -rf . || true
+            echo "# Benchmark Data" > README.md
+            git add README.md
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: initialize ${{ inputs.gh-pages-branch }} branch"
+            git push origin ${{ inputs.gh-pages-branch }}
+            git checkout -
+          else
+            echo "Branch ${{ inputs.gh-pages-branch }} exists on remote."
+          fi
 
       - name: Run benchmark
         run: dotnet run -c Release -- --exporters json --filter '*'

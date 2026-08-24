@@ -46,15 +46,11 @@ jobs:
         run: |
           if ! git ls-remote --exit-code --heads origin ${{ inputs.gh-pages-branch }}; then
             echo "Branch ${{ inputs.gh-pages-branch }} does not exist on remote. Initializing orphan branch..."
-            git checkout --orphan ${{ inputs.gh-pages-branch }}
-            git rm -rf . || true
-            echo "# Benchmark Data" > README.md
-            git add README.md
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: initialize ${{ inputs.gh-pages-branch }} branch"
-            git push origin ${{ inputs.gh-pages-branch }}
-            git checkout -
+            EMPTY_TREE=$(git mktree < /dev/null)
+            EMPTY_COMMIT=$(git commit-tree $EMPTY_TREE -m "chore: initialize ${{ inputs.gh-pages-branch }} branch")
+            git push origin $EMPTY_COMMIT:refs/heads/${{ inputs.gh-pages-branch }}
           else
             echo "Branch ${{ inputs.gh-pages-branch }} exists on remote."
           fi

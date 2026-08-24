@@ -12,14 +12,17 @@ on:
         type: string
         default: "BenchmarkDotNet.Artifacts/results"
       dotnet-version:
+        description: "Dotnet version"
         type: string
         default: "8.0.x"
       gh-pages-branch:
+        description: "Branch to store benchmark results"
         type: string
-        default: gh-pages
+        default: "gh-pages"
       data-dir:
+        description: "Directory in gh-pages to store results"
         type: string
-        default: dev/bench
+        default: "dev/bench"
 
 jobs:
   benchmark:
@@ -30,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
@@ -38,17 +41,18 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version }}
 
       - name: Run benchmark
-        run: dotnet run -c Release --exporters json --filter '*'
+        run: dotnet run -c Release -- --exporters json --filter '*'
         working-directory: ${{ inputs.project }}
 
       - name: Find summary report
         id: summary
         run: |
-          report=$(find "${{ inputs.results-dir }}" -type f -name '*report-full-compressed.json' | head -n 1)
+          report=$(find "${{ inputs.project }}/BenchmarkDotNet.Artifacts/results" "${{ inputs.results-dir }}" . -type f \( -name '*report-full-compressed.json' -o -name '*report.json' \) 2>/dev/null | head -n 1)
           if [ -z "$report" ]; then
-            echo "::error::No benchmark report (*report-full-compressed.json) found in ${{ inputs.results-dir }}"
+            echo "::error::No benchmark report (*report-full-compressed.json or *report.json) found"
             exit 1
           fi
+          echo "Found benchmark report: $report"
           echo "report=$report" >> $GITHUB_OUTPUT
 
       - name: Store benchmark result

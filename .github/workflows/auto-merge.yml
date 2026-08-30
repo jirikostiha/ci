@@ -1,0 +1,60 @@
+name: Auto merge # reusable: merge trusted bot PRs once every check passes
+
+on:
+  workflow_call:
+    inputs:
+      head-branch:
+        description: "Head branch of the pull request to merge (from the triggering workflow_run)"
+        required: true
+        type: string
+      actors:
+        description: "Comma separated pull request authors eligible for auto merge"
+        type: string
+        default: "dependabot[bot],github-actions[bot]"
+      merge-method:
+        description: "squash, merge or rebase"
+        type: string
+        default: squash
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Merge bot pull request once every check passes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ inputs.head-branch }}
+          ACTORS: ${{ inputs.actors }}
+          METHOD: ${{ inputs.merge-method }}
+        run: |
+          set -euo pipefail
+
+          number=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --state open \
+                     --json number --jq '.[0].number // empty')
+          if [ -z "$number" ]; then
+            echo "No open pull request for '$HEAD_BRANCH'; nothing to merge."
+            exit 0
+          fi
+
+          author=$(gh pr view "$number" --repo "$REPO" --json author --jq '.author.login')
+          # gh reports bot authors as "app/dependabot"; normalise to "dependabot[bot]".
+          case "$author" in
+            app/*) author="${author#app/}[bot]" ;;
+          esac
+          case ",${ACTORS}," in
+            *",${author},"*) ;;
+            *)
+              echo "PR #$number author '$author' is not listed in '${ACTORS}'; skipping."
+              exit 0 ;;
+          esac
+
+          # Block until every check completes; non-zero exit if any fails or is cancelled.
+          gh pr checks "$number" --repo "$REPO" --watch --fail-fast
+
+          gh pr merge "$number" --repo "$REPO" --"$METHOD" --delete-branch

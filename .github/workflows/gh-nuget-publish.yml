@@ -1,0 +1,34 @@
+name: GitHub NuGet publish # reusable: push the "packages" artifact to GitHub Packages
+
+on:
+  workflow_call:
+    inputs:
+      packages-dir:
+        type: string
+        default: "packages"
+      environment:
+        description: "Deployment environment (approval gate lives in the caller repo)"
+        type: string
+        default: "production"
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download artifact - packages
+        uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: ${{ inputs.packages-dir }}
+
+      - name: Push to GitHub Packages
+        run: >
+          dotnet nuget push "${{ inputs.packages-dir }}/*.nupkg"
+          --api-key ${{ github.token }}
+          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          --skip-duplicate

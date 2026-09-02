@@ -28,13 +28,28 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump.
 | --- | --- | --- |
 | `dotnet-build.yml` | Restore, build, test, optional pack + artifacts | `solution`, `configuration`, `artifacts` |
 | `gh-release.yml` | Zip `binaries` artifact, create GitHub release, prune old | `tag`, `keep-latest` |
-| `nuget-publish.yml` | Push `packages` artifact to nuget.org via OIDC | `user` |
+| `gh-nuget-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `code-analysis.yml` | CodeQL | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix | `dir` |
 | `lint-commit.yml` | commitlint + fixup guard | `config` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
+
+### Inline templates (`templates/`, copy — do not call)
+
+| Template | Purpose |
+| --- | --- |
+| `templates/nuget-publish.yml` | Publish to **nuget.org** via OIDC trusted publishing |
+
+nuget.org (and PyPI/npm) trusted publishing **cannot** run from a cross-repo
+reusable workflow: nuget.org matches the OIDC token's `repository` /
+`repository_id` / `repository_owner_id` (the caller repo) *and* `job_workflow_ref`
+(the repo where the job lives). A cross-repo reusable splits those across two
+repos, so no policy matches and the token exchange fails (HTTP 401). Copy the
+template into the package repo's own `.github/workflows/` instead. GitHub Packages
+uses `GITHUB_TOKEN` (no subject matching), so `gh-nuget-publish.yml` stays a
+normal reusable.
 
 ## Usage
 
@@ -76,10 +91,12 @@ jobs:
     with: { tag: ${{ github.ref_name }} }
   publish:
     needs: release
-    uses: jirikostiha/ci/.github/workflows/nuget-publish.yml@v1
-    with: { user: jiri }
-    permissions: { contents: read, id-token: write }
+    uses: jirikostiha/ci/.github/workflows/gh-nuget-publish.yml@v1
+    permissions: { contents: read, packages: write }
 ```
+
+For **nuget.org** trusted publishing, inline `templates/nuget-publish.yml` into the
+consumer repo instead of calling a reusable (see the templates note above).
 
 ## Notes
 

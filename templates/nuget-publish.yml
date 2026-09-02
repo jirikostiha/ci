@@ -1,0 +1,72 @@
+# INLINE TEMPLATE — copy this into the package repo as .github/workflows/publish.yml.
+#
+# This is NOT a reusable workflow. nuget.org trusted publishing (OIDC) CANNOT run
+# from a cross-repo reusable workflow: nuget.org validates the OIDC token's
+# `repository` / `repository_id` / `repository_owner_id` (which resolve to the
+# CALLER repo) together with `job_workflow_ref` (which resolves to the repo where
+# the job physically lives). A cross-repo reusable makes those point to two
+# different repos, so no trusted-publishing policy can match — the token exchange
+# fails with HTTP 401. The push step must therefore live in the package repo's own
+# workflow file whose filename matches the policy.
+#
+# Refs: Microsoft Learn "Trusted Publishing on nuget.org"; GitHub "Using OpenID
+# Connect with reusable workflows"; NuGet/Home trusted-publishers OIDC spec.
+#
+# Before use: set `solution`, `dotnet-version`, and the nuget.org `user`, then
+# register a trusted-publishing policy on nuget.org (owner, repo, this file's
+# name, optional environment).
+
+name: Publish Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  solution: "./src/YourSolution.slnx"
+  dotnet-version: "10.0.x"
+  nuget-user: "your-nuget-username" # nuget.org profile name, NOT an email
+
+jobs:
+  publish:
+    name: Publish to nuget.org
+    runs-on: ubuntu-latest
+    environment: production # approval gate configured on this repo's environment
+    permissions:
+      contents: read
+      id-token: write # OIDC token issuance; no long-lived API key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.dotnet-version }}
+
+      - name: Restore
+        run: dotnet restore "${{ env.solution }}"
+
+      - name: Build
+        run: dotnet build "${{ env.solution }}" --no-restore -c Release -p:ContinuousIntegrationBuild=true
+
+      - name: Pack
+        run: dotnet pack "${{ env.solution }}" --no-build -c Release -o packages -p:ContinuousIntegrationBuild=true
+
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ env.nuget-user }}
+
+      - name: Push to nuget.org
+        run: >
+          dotnet nuget push "packages/*.nupkg"
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

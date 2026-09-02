@@ -49,8 +49,8 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             EMPTY_TREE=$(git mktree < /dev/null)
-            EMPTY_COMMIT=$(git commit-tree $EMPTY_TREE -m "chore: initialize ${{ inputs.gh-pages-branch }} branch")
-            git push origin $EMPTY_COMMIT:refs/heads/${{ inputs.gh-pages-branch }}
+            EMPTY_COMMIT=$(git commit-tree "$EMPTY_TREE" -m "chore: initialize ${{ inputs.gh-pages-branch }} branch")
+            git push origin "$EMPTY_COMMIT:refs/heads/${{ inputs.gh-pages-branch }}"
           else
             echo "Branch ${{ inputs.gh-pages-branch }} exists on remote."
           fi
@@ -68,7 +68,7 @@ jobs:
             exit 1
           fi
           echo "Found benchmark report: $report"
-          echo "report=$report" >> $GITHUB_OUTPUT
+          echo "report=$report" >> "$GITHUB_OUTPUT"
 
       - name: Store benchmark result
         uses: rhysd/github-action-benchmark@v1

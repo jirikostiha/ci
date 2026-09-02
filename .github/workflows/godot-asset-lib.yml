@@ -1,0 +1,50 @@
+name: Godot Asset Library # reusable: publish/update an asset on the Godot Asset Library
+
+on:
+  workflow_call:
+    inputs:
+      username:
+        description: "Godot Asset Library account username"
+        required: true
+        type: string
+      asset-id:
+        description: "Id of the asset to update"
+        required: true
+        type: string
+      asset-template:
+        description: "Path to the Handlebars asset edit template (in the caller repo)"
+        type: string
+        default: ".github/asset-template.json.hb"
+      approve-directly:
+        description: "Approve the edit immediately (requires asset owner rights)"
+        type: boolean
+        default: true
+      ref:
+        description: "Git ref of the caller repo to check out (defaults to the triggering ref)"
+        type: string
+        default: ""
+    secrets:
+      password:
+        description: "Godot Asset Library account password"
+        required: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Push to Asset Library
+        uses: deep-entertainment/godot-asset-lib-action@v0.6.0
+        with:
+          username: ${{ inputs.username }}
+          password: ${{ secrets.password }}
+          assetId: ${{ inputs.asset-id }}
+          approveDirectly: ${{ inputs.approve-directly }}
+          assetTemplate: ${{ inputs.asset-template }}

@@ -78,6 +78,9 @@ jobs:
           name: binaries
           path: "${{ inputs.binaries-path }}/${{ inputs.configuration }}"
           retention-days: 90
+          # A multi-project solution has no single root output dir; skip quietly
+          # instead of warning when the path matches nothing.
+          if-no-files-found: ignore
 
       - name: Upload artifact - packages
         if: inputs.artifacts

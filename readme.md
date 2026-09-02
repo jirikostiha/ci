@@ -6,13 +6,16 @@ across repositories. One source of truth; consumers stay thin.
 ## Versioning
 
 Consumers pin by tag; Dependabot converts tags to commit SHAs and keeps them
-current. Releases are immutable — a published tag never moves.
+current.
 
-- `@v1` — latest v1.x, backwards compatible
-- `@v1.2.0` — exact release
-- `@<sha>` — hardened pin (recommended for production; Dependabot maintains it)
+- `@v1` — **moving major alias**: always points at the latest `v1.x`. This tag
+  is repositioned on every `v1.x` release (the GitHub Actions convention), so it
+  is the one exception to immutability below.
+- `@v1.2.0` — **exact release**: immutable; a published exact tag never moves.
+- `@<sha>` — hardened pin (recommended for production; Dependabot maintains it).
 
-Breaking changes ship as a new major (`v2`) and require an explicit bump.
+Breaking changes ship as a new major (`v2`) and require an explicit bump; the
+`v1` alias is never repositioned onto a breaking change.
 
 ## Catalog
 

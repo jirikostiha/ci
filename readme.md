@@ -27,20 +27,23 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump.
 | Workflow | Purpose | Key inputs |
 | --- | --- | --- |
 | `dotnet-build.yml` | Restore, build, test, optional pack + artifacts | `solution`, `configuration`, `artifacts` |
-| `gh-release.yml` | Zip `binaries` artifact, create GitHub release, prune old | `tag`, `keep-latest` |
-| `gh-nuget-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
+| `github-release.yml` | Zip `binaries` artifact, create GitHub release, prune old | `tag`, `keep-latest` |
+| `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
+| `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
+| `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks` |
 | `code-analysis.yml` | CodeQL | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix | `dir` |
 | `lint-commit.yml` | commitlint + fixup guard | `config` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
+| `auto-merge.yml` | Auto-merge PR on successful build | `head-branch` |
 
 ### Inline templates (`templates/`, copy — do not call)
 
-| Template | Purpose |
-| --- | --- |
-| `templates/nuget-publish.yml` | Publish to **nuget.org** via OIDC trusted publishing |
+| Template | Purpose | Target path in consumer |
+| --- | --- | --- |
+| `templates/nuget-publish.yml` | Publish to **nuget.org** via OIDC trusted publishing | `.github/workflows/nuget-publish.yml` |
 
 nuget.org (and PyPI/npm) trusted publishing **cannot** run from a cross-repo
 reusable workflow: nuget.org matches the OIDC token's `repository` /
@@ -48,7 +51,7 @@ reusable workflow: nuget.org matches the OIDC token's `repository` /
 (the repo where the job lives). A cross-repo reusable splits those across two
 repos, so no policy matches and the token exchange fails (HTTP 401). Copy the
 template into the package repo's own `.github/workflows/` instead. GitHub Packages
-uses `GITHUB_TOKEN` (no subject matching), so `gh-nuget-publish.yml` stays a
+uses `GITHUB_TOKEN` (no subject matching), so `github-publish.yml` stays a
 normal reusable.
 
 ## Usage
@@ -87,11 +90,11 @@ jobs:
     with: { solution: ./src/smath.slnx, configuration: Release, artifacts: true }
   release:
     needs: build
-    uses: jirikostiha/ci/.github/workflows/gh-release.yml@v1
+    uses: jirikostiha/ci/.github/workflows/github-release.yml@v1
     with: { tag: ${{ github.ref_name }} }
   publish:
     needs: release
-    uses: jirikostiha/ci/.github/workflows/gh-nuget-publish.yml@v1
+    uses: jirikostiha/ci/.github/workflows/github-publish.yml@v1
     permissions: { contents: read, packages: write }
 ```
 

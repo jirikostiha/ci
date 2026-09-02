@@ -1,4 +1,4 @@
-# INLINE TEMPLATE — copy this into the package repo as .github/workflows/publish.yml.
+# INLINE TEMPLATE — copy this into the package repo as .github/workflows/nuget-publish.yml.
 #
 # This is NOT a reusable workflow. nuget.org trusted publishing (OIDC) CANNOT run
 # from a cross-repo reusable workflow: nuget.org validates the OIDC token's
@@ -14,14 +14,17 @@
 #
 # Before use: set `solution`, `dotnet-version`, and the nuget.org `user`, then
 # register a trusted-publishing policy on nuget.org (owner, repo, this file's
-# name, optional environment).
+# name: nuget-publish.yml, optional environment).
 
-name: Publish Package
+name: Publish to nuget.org
 
 on:
-  release:
-    types: [published]
+  workflow_call:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish"
+        required: true
 
 permissions:
   contents: read

@@ -7,6 +7,11 @@ on:
         description: "Release tag / name"
         required: true
         type: string
+      product-name:
+        description: "Product name used in the release zip asset (<product-name>_<tag>.zip)"
+        required: false
+        type: string
+        default: ""
       keep-latest:
         description: "How many releases to retain"
         type: number
@@ -30,7 +35,12 @@ jobs:
           path: build
 
       - name: Zip binaries
-        run: (cd build && zip -r ../binaries.zip .)
+        run: |
+          PRODUCT="${{ inputs.product-name }}"
+          if [ -z "$PRODUCT" ]; then PRODUCT="${GITHUB_REPOSITORY#*/}"; fi
+          ZIP_NAME="${PRODUCT}_${{ inputs.tag }}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          (cd build && zip -r "../$ZIP_NAME" .)
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -40,7 +50,7 @@ jobs:
           prerelease: false
           draft: false
           generate_release_notes: true
-          files: binaries.zip
+          files: ${{ env.ZIP_NAME }}
           token: ${{ secrets.release-token || secrets.GITHUB_TOKEN }}
 
       - name: Remove old releases

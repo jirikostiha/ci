@@ -30,7 +30,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | Workflow | Purpose | Key inputs |
 | --- | --- | --- |
 | `dotnet-build.yml` | Restore, build, test, optional pack + artifacts | `solution`, `configuration`, `artifacts` |
-| `github-release.yml` | Zip `binaries` artifact, create GitHub release, prune old | `tag`, `keep-latest` |
+| `github-release.yml` | Zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
 | `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks` |

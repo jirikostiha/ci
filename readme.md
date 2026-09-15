@@ -40,7 +40,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
-| `auto-merge.yml` | Auto-merge PR on successful build | `head-branch` |
+| `auto-merge.yml` | Merge a trusted bot PR once every check passes; trigger via `workflow_run` of `Auto Approve` and grant `contents: write`, `pull-requests: write`, `checks: read`, `statuses: read` | `head-branch` |
 
 ### Inline templates (`templates/`, copy — do not call)
 

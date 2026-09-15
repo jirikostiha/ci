@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       head-branch:
-        description: "Head branch of the pull request to merge (from the triggering workflow_run)"
+        description: "Head branch of the pull request to merge (from the triggering Auto Approve workflow_run)"
         required: true
         type: string
       actors:
@@ -23,6 +23,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      checks: read # gh pr checks reads the PR status check rollup
+      statuses: read
 
     steps:
       - name: Merge bot pull request once every check passes

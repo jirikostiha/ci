@@ -1,4 +1,4 @@
-name: Code lint # reusable: dotnet format with auto fix
+name: Code lint # reusable: dotnet format, auto fix or check-only
 
 on:
   workflow_call:
@@ -10,6 +10,14 @@ on:
       dotnet-version:
         type: string
         default: "8.0.x"
+      check-only:
+        description: "Only verify formatting, never commit fixes (release gate)"
+        type: boolean
+        default: false
+      ref:
+        description: "Git ref to lint (default: the triggering ref)"
+        type: string
+        default: ""
 
 jobs:
   run-linters:
@@ -21,6 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Setup .NET
         uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
@@ -33,6 +43,6 @@ jobs:
           commit_message: "style: code style issues with ${linter}"
           dotnet_format: true
           dotnet_format_dir: ${{ inputs.dir }}
-          dotnet_format_auto_fix: true
-          auto_fix: true
+          dotnet_format_auto_fix: ${{ !inputs.check-only }}
+          auto_fix: ${{ !inputs.check-only }}
           git_name: "C# linter"

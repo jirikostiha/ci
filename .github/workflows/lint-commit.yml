@@ -10,6 +10,8 @@ on:
 
 jobs:
   commit-lint:
+    # Dependabot writes its own commit messages (e.g. "Bump the nuget group ..."); linting them only produces red checks.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read

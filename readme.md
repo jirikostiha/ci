@@ -36,7 +36,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks` |
 | `code-analysis.yml` | CodeQL | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix | `dir` |
-| `lint-commit.yml` | commitlint + fixup guard | `config` |
+| `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs | `config` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |

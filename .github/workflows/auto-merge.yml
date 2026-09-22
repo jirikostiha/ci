@@ -61,4 +61,32 @@ jobs:
           # Block until every check completes; non-zero exit if any fails or is cancelled.
           gh pr checks "$number" --repo "$REPO" --watch --fail-fast
 
-          gh pr merge "$number" --repo "$REPO" --"$METHOD" --delete-branch
+          # Dependabot's commit message casing and body are not configurable (e.g.
+          # "Bump the nuget group ..." or "build: Bump X"), so rewrite the squash
+          # commit to a Conventional Commit: "<type>(deps): bump ...".
+          commit_args=()
+          if [ "$author" = "dependabot[bot]" ] && [ "$METHOD" = "squash" ]; then
+            title=$(gh pr view "$number" --repo "$REPO" --json title --jq '.title')
+            if [[ "$title" =~ ^([a-z]+)(\(([^\)]*)\))?!?:\ (.*)$ ]]; then
+              type="${BASH_REMATCH[1]}"
+              scope="${BASH_REMATCH[3]:-deps}"
+              text="${BASH_REMATCH[4]}"
+            else
+              case "$HEAD_BRANCH" in
+                dependabot/github_actions/*) type=ci ;;
+                *) type=build ;;
+              esac
+              scope=deps
+              text="$title"
+            fi
+            text="${text,}"
+            text="${text%.}"
+            subject="${type}(${scope}): ${text}"
+            # Stay within commitlint's header-max-length: drop Dependabot's " in /<dir>" suffix first.
+            if [ ${#subject} -gt 100 ]; then subject="${subject% in /*}"; fi
+            subject="${subject:0:100}"
+            commit_args=(--subject "$subject" --body "Dependabot pull request #${number}.")
+            echo "Squash commit subject: $subject"
+          fi
+
+          gh pr merge "$number" --repo "$REPO" --"$METHOD" --delete-branch "${commit_args[@]}"

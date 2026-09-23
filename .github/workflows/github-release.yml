@@ -35,7 +35,7 @@ jobs:
     steps:
       - name: Checkout version file
         if: inputs.version-file != ''
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
           sparse-checkout: ${{ inputs.version-file }}

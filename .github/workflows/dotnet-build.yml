@@ -55,8 +55,16 @@ jobs:
       - name: Build ${{ inputs.configuration }}
         run: dotnet build "${{ inputs.solution }}" --no-restore -c ${{ inputs.configuration }} -p:ContinuousIntegrationBuild=true
 
+      # A repository opts into Microsoft.Testing.Platform in global.json; that mode rejects
+      # VSTest's --logger and needs the platform's own trx flags (MTP v2 dropped VSTest on .NET 10).
       - name: Test
-        run: dotnet test "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} --logger "trx;LogFileName=test-results.trx"
+        shell: bash
+        run: |
+          if grep -Eq '"runner"[[:space:]]*:[[:space:]]*"Microsoft\.Testing\.Platform"' global.json 2>/dev/null; then
+            dotnet test "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} --report-trx --report-trx-filename test-results.trx
+          else
+            dotnet test "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} --logger "trx;LogFileName=test-results.trx"
+          fi
 
       - name: Test report
         if: always()

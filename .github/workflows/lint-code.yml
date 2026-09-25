@@ -22,9 +22,9 @@ on:
 jobs:
   run-linters:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      checks: write
+    # No job-level permissions: the job inherits what the caller grants, so a check-only
+    # release gate can run with contents: read while auto fix needs contents: write.
+    # A declared contents: write here would force every caller to grant it.
 
     steps:
       - name: Checkout

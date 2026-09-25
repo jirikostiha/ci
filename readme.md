@@ -23,7 +23,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 
 | Action | Purpose |
 | --- | --- |
-| `actions/setup-dotnet` | Install the .NET SDK and print info |
+| `actions/setup-dotnet` | Install the .NET SDK (`dotnet-version` plus the SDK pinned in the repository's `global.json`, if any) and print info |
 
 ### Reusable workflows (`workflow_call`)
 

@@ -13,6 +13,9 @@ runs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
+        # Also install the SDK the repository pins in global.json, so the pin never depends on
+        # what the runner image happens to ship. No global.json -> only dotnet-version.
+        global-json-file: ${{ hashFiles('global.json') != '' && 'global.json' || '' }}
 
     - name: .NET info
       run: dotnet --info

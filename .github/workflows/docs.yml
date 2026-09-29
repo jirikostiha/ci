@@ -22,6 +22,10 @@ on:
           8.0.x
           9.0.x
           10.0.x
+      ref:
+        description: "Git ref to document (defaults to the triggering ref)"
+        type: string
+        default: ""
       include-benchmarks:
         description: "Whether to include benchmark charts from gh-pages branch"
         type: boolean
@@ -50,6 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup .NET

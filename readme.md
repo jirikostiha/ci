@@ -33,11 +33,11 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
-| `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks` |
+| `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
 | `code-analysis.yml` | CodeQL | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix, or check-only as a release gate; inherits the caller's permissions: grant `contents: write`, `checks: write` for auto fix, `contents: read`, `checks: write` for check-only | `dir`, `check-only`, `ref` |
 | `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs | `config` |
-| `benchmark.yml` | BenchmarkDotNet + result storage | `project` |
+| `benchmark.yml` | BenchmarkDotNet + result storage | `project`, `ref` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
 | `auto-merge.yml` | Merge a trusted bot PR once every check passes (Dependabot squash commits are rewritten to `<type>(deps): bump ...`); trigger via `workflow_run` of `Auto Approve` and grant `contents: write`, `pull-requests: write`, `actions: read`, `checks: read`, `statuses: read` | `head-branch` |

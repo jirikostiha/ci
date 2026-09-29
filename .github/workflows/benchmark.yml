@@ -15,6 +15,10 @@ on:
         description: "Dotnet version"
         type: string
         default: "8.0.x"
+      ref:
+        description: "Git ref to benchmark (defaults to the triggering ref)"
+        type: string
+        default: ""
       gh-pages-branch:
         description: "Branch to store benchmark results"
         type: string
@@ -35,6 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup .NET

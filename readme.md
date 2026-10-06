@@ -36,7 +36,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
 | `code-analysis.yml` | CodeQL | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix, or check-only as a release gate; inherits the caller's permissions: grant `contents: write`, `checks: write` for auto fix, `contents: read`, `checks: write` for check-only | `dir`, `check-only`, `ref` |
-| `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs | `config` |
+| `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs. Without `config` it uses the shared config inside the workflow: the ai-kit commit types plus `product` | `config` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project`, `ref` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |

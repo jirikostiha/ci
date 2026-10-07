@@ -6,66 +6,68 @@
 # CALLER repo) together with `job_workflow_ref` (which resolves to the repo where
 # the job physically lives). A cross-repo reusable makes those point to two
 # different repos, so no trusted-publishing policy can match — the token exchange
-# fails with HTTP 401. The push step must therefore live in the package repo's own
+# fails with HTTP 401. The push job must therefore live in the package repo's own
 # workflow file whose filename matches the policy.
+#
+# Only the push job needs the token; build and pack still go through the shared
+# dotnet-build.yml, so the build has one definition.
+# A .snupkg next to a .nupkg in `packages/` is pushed with it.
 #
 # Refs: Microsoft Learn "Trusted Publishing on nuget.org"; GitHub "Using OpenID
 # Connect with reusable workflows"; NuGet/Home trusted-publishers OIDC spec.
 #
-# Before use: set `solution`, `dotnet-version`, and the nuget.org `user`, then
-# register a trusted-publishing policy on nuget.org (owner, repo, this file's
-# name: nuget-publish.yml, optional environment).
+# Before use: set `solution` (and `dotnet-version` if the dotnet-build default does
+# not fit) and the nuget.org `user`, then register a trusted-publishing policy on
+# nuget.org (owner, repo, this file's name: nuget-publish.yml, environment: production).
 
-name: Publish to nuget.org
+name: Publish
 
 on:
   workflow_call:
+    inputs:
+      reuse-artifacts:
+        description: "Push the caller's 'packages' artifact instead of building here"
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag:
         description: "Tag to build and publish"
         required: true
 
-permissions:
-  contents: read
-
-env:
-  solution: "./src/YourSolution.slnx"
-  dotnet-version: "10.0.x"
-  nuget-user: "your-nuget-username" # nuget.org profile name, NOT an email
-
 jobs:
+  build:
+    if: ${{ !inputs.reuse-artifacts }}
+    uses: jirikostiha/ci/.github/workflows/dotnet-build.yml@v1
+    permissions:
+      contents: read
+      checks: write
+    with:
+      solution: ./src/YourSolution.slnx
+      configuration: Release
+      ref: ${{ inputs.tag || github.ref }}
+      artifacts: true
+
   publish:
-    name: Publish to nuget.org
+    needs: build
+    if: ${{ !cancelled() && !failure() }} # also runs when build is skipped by reuse-artifacts
     runs-on: ubuntu-latest
-    environment: production # approval gate configured on this repo's environment
+    environment: production # matches the nuget.org trust policy; approval gate lives in this repo
     permissions:
       contents: read
       id-token: write # OIDC token issuance; no long-lived API key
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+      - name: Download artifact - packages
+        uses: actions/download-artifact@v8
         with:
-          dotnet-version: ${{ env.dotnet-version }}
-
-      - name: Restore
-        run: dotnet restore "${{ env.solution }}"
-
-      - name: Build
-        run: dotnet build "${{ env.solution }}" --no-restore -c Release -p:ContinuousIntegrationBuild=true
-
-      - name: Pack
-        run: dotnet pack "${{ env.solution }}" --no-build -c Release -o packages -p:ContinuousIntegrationBuild=true
+          name: packages
+          path: packages
 
       - name: NuGet login (OIDC -> short-lived API key)
         uses: NuGet/login@v1
         id: login
         with:
-          user: ${{ env.nuget-user }}
+          user: your-nuget-username # nuget.org profile name, NOT an email
 
       - name: Push to nuget.org
         run: >

@@ -34,7 +34,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
 | `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
-| `code-analysis.yml` | CodeQL | `language` |
+| `code-analysis.yml` | CodeQL; uploads to code scanning where the repository has it, otherwise keeps the SARIF as the `codeql-results` artifact. Inherits the caller's permissions: grant `contents: read`, `security-events: write`, plus `actions: read` in a private repository | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix, or check-only as a release gate; inherits the caller's permissions: grant `contents: write`, `checks: write` for auto fix, `contents: read`, `checks: write` for check-only | `dir`, `check-only`, `ref` |
 | `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs. Without `config` it uses the shared config inside the workflow: the ai-kit commit types plus `product` | `config` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project`, `ref` |

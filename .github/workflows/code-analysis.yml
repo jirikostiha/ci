@@ -14,10 +14,27 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     permissions:
+      actions: read # private repositories: CodeQL reads the workflow run while it interprets results
       contents: read
       security-events: write
 
     steps:
+      # A private repository without GitHub Advanced Security has no code scanning, and an upload
+      # there fails the job; analyse anyway and keep the SARIF as an artifact instead.
+      - name: Detect code scanning
+        id: scanning
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if ! gh api "repos/$REPOSITORY/code-scanning/analyses?per_page=1" --silent 2> "$RUNNER_TEMP/scanning.txt" \
+            && grep -q "HTTP 403" "$RUNNER_TEMP/scanning.txt"; then
+            cat "$RUNNER_TEMP/scanning.txt"
+            echo "upload=never" >> "$GITHUB_OUTPUT"
+          else
+            echo "upload=always" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
         uses: actions/checkout@v7
 
@@ -36,3 +53,13 @@ jobs:
 
       - name: CodeQL analysis
         uses: github/codeql-action/analyze@v4
+        with:
+          upload: ${{ steps.scanning.outputs.upload }}
+          output: ${{ runner.temp }}/codeql-results
+
+      - name: Upload results
+        if: steps.scanning.outputs.upload == 'never'
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-results
+          path: ${{ runner.temp }}/codeql-results

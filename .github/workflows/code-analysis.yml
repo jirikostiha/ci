@@ -13,9 +13,9 @@ on:
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
+    # No permissions of its own: the job inherits the caller's grant (contents: read,
+    # security-events: write). A private repository adds actions: read, which CodeQL needs there
+    # to read the workflow run; declaring it here would fail every caller that does not grant it.
 
     steps:
       # A private repository without GitHub Advanced Security has no code scanning, and an upload

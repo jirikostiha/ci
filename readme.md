@@ -104,6 +104,43 @@ jobs:
 For **nuget.org** trusted publishing, inline `templates/nuget-publish.yml` into the
 consumer repo instead of calling a reusable (see the templates note above).
 
+## Private NuGet feed
+
+A consumer of the owner's GitHub Packages NuGet feed keeps no credentials in its
+`nuget.config`; it reads them from the environment:
+
+```xml
+<packageSourceCredentials>
+  <github-jirikostiha>
+    <add key="Username" value="%NUGET_GH_USER%" />
+    <add key="ClearTextPassword" value="%NUGET_GH_TOKEN%" />
+  </github-jirikostiha>
+</packageSourceCredentials>
+```
+
+`dotnet-build.yml`, `lint-code.yml` and `code-analysis.yml` set both variables
+from the optional `NUGET_GH_TOKEN` secret. The caller passes it:
+
+```yaml
+    secrets:
+      NUGET_GH_TOKEN: ${{ secrets.NUGET_GH_TOKEN }}
+```
+
+Dependabot reads the feed through a registry with the same secret:
+
+```yaml
+registries:
+  github-jirikostiha:
+    type: nuget-feed
+    url: https://nuget.pkg.github.com/jirikostiha/index.json
+    token: ${{ secrets.NUGET_GH_TOKEN }}
+```
+
+The secret is a classic PAT with `read:packages` only. A personal account has
+no shared secrets, so `cmd/Set-NuGetFeedSecret.ps1` finds every repository whose
+`nuget.config` uses the feed and sets the token there as an Actions and a
+Dependabot secret. Run it after creating such a repository or replacing the token.
+
 ## Notes
 
 - Reusable workflows reference the composite action by **full path**

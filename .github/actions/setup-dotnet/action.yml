@@ -5,6 +5,9 @@ inputs:
   dotnet-version:
     description: ".NET SDK version(s), newline separated"
     default: "8.0.x"
+  nuget-token:
+    description: "Token for the owner's GitHub Packages NuGet feed, exposed as NUGET_GH_USER / NUGET_GH_TOKEN for nuget.config"
+    default: ""
 
 runs:
   using: composite
@@ -19,4 +22,16 @@ runs:
 
     - name: .NET info
       run: dotnet --info
+      shell: bash
+
+    # nuget.config of a consumer reads the feed credentials from these variables, so the token
+    # stays out of the repository.
+    - name: NuGet feed credentials
+      if: inputs.nuget-token != ''
+      env:
+        OWNER: ${{ github.repository_owner }}
+        TOKEN: ${{ inputs.nuget-token }}
+      run: |
+        echo "NUGET_GH_USER=$OWNER" >> "$GITHUB_ENV"
+        echo "NUGET_GH_TOKEN=$TOKEN" >> "$GITHUB_ENV"
       shell: bash

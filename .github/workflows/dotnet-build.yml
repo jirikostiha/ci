@@ -30,6 +30,10 @@ on:
         description: "Output directory for nupkg files"
         type: string
         default: "packages"
+    secrets:
+      NUGET_GH_TOKEN:
+        description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
+        required: false
 
 jobs:
   build:
@@ -48,6 +52,7 @@ jobs:
         uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
+          nuget-token: ${{ secrets.NUGET_GH_TOKEN }}
 
       - name: Restore dependencies
         run: dotnet restore "${{ inputs.solution }}"

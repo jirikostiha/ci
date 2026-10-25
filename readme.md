@@ -148,7 +148,7 @@ in `templates/`, keeping the holder of the existing `LICENSE`:
 
 | Template | Use for | Year |
 |---|---|---|
-| `templates/LICENSE-no-ai.template` | public repositories: MIT-derived, forbids AI training | kept from the existing `LICENSE` |
+| `templates/LICENSE-no-ai.template` | public repositories: MIT NON-AI License of [non-ai-licenses](https://github.com/non-ai-licenses/non-ai-licenses), forbids AI training | kept from the existing `LICENSE` |
 | `templates/LICENSE-proprietary.template` (`-Proprietary`) | private repositories: all rights reserved | year of the first commit |
 
 The script refuses to replace one of these licenses with the other. It does not edit project

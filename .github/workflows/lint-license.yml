@@ -1,0 +1,75 @@
+name: License lint # reusable: LICENSE exists and matches the shared license template
+
+on:
+  workflow_call:
+    inputs:
+      license:
+        description: "no-ai, proprietary, or exists (only require a LICENSE); empty picks proprietary for a private repository and no-ai for a public one"
+        type: string
+        default: ""
+      holder:
+        description: "Copyright holder the LICENSE must name"
+        type: string
+        default: "Jiri Kostiha"
+
+jobs:
+  license-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # The templates are the one definition of the license text (cmd/Set-NoAiLicense.ps1 writes them),
+      # so they are read from the pinned major of this repository instead of being copied here.
+      - name: Checkout license templates
+        uses: actions/checkout@v7
+        with:
+          repository: jirikostiha/ci
+          ref: v1
+          path: .ci-license
+          sparse-checkout: templates
+
+      - name: Check LICENSE
+        env:
+          LICENSE_KIND: ${{ inputs.license }}
+          HOLDER: ${{ inputs.holder }}
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -euo pipefail
+
+          kind="$LICENSE_KIND"
+          if [ -z "$kind" ]; then
+            case "$IS_PRIVATE" in
+              true) kind=proprietary ;;
+              false) kind=no-ai ;;
+              *) echo "::error::Cannot tell whether the repository is private; set the license input."; exit 1 ;;
+            esac
+          fi
+
+          if [ ! -f LICENSE ]; then
+            echo "::error file=LICENSE::The repository has no LICENSE file."
+            exit 1
+          fi
+          [ "$kind" = exists ] && exit 0
+
+          template=".ci-license/templates/LICENSE-$kind.template"
+          if [ ! -f "$template" ]; then
+            echo "::error::Unknown license '$kind'; use no-ai, proprietary or exists."
+            exit 1
+          fi
+
+          # The year and the holder differ per repository, so the copyright line is checked on its own.
+          mask() { tr -d '\r' < "$1" | sed -E 's/^Copyright \(c\) ([0-9]{4}|\{\{YEAR\}\}) .*/Copyright/'; }
+          if ! diff <(mask LICENSE) <(mask "$template"); then
+            echo "::error file=LICENSE::LICENSE differs from the $kind template; write it with cmd/Set-NoAiLicense.ps1."
+            exit 1
+          fi
+
+          holder_pattern=$(printf '%s' "$HOLDER" | sed 's/[][\.*^$/]/\&/g')
+          if ! tr -d '\r' < LICENSE | grep -qE "^Copyright \(c\) [0-9]{4} ${holder_pattern}(\. All rights reserved\.)?$"; then
+            echo "::error file=LICENSE::The copyright line must name '$HOLDER'."
+            exit 1
+          fi

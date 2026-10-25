@@ -143,6 +143,16 @@ jobs:
           fi
           echo "Benchmarks step completed."
 
+      # A robots.txt in a project site is never read: crawlers ask for it at the root of the host only.
+      # The reservation therefore goes into every page. tdm-reservation is the W3C TDM Reservation Protocol,
+      # which Article 4(3) of Directive (EU) 2019/790 accepts as a machine-readable opt-out; `noai` is an
+      # informal convention that some crawlers honour.
+      - name: Reserve text and data mining
+        run: |
+          find "${{ inputs.output-dir }}" -name '*.html' -exec sed -i \
+            's|</head>|<meta name="tdm-reservation" content="1"><meta name="robots" content="noai, noimageai"></head>|' {} +
+          echo "Pages tagged: $(grep -rl 'tdm-reservation' "${{ inputs.output-dir }}" --include='*.html' | wc -l)"
+
       - name: Setup Pages
         uses: actions/configure-pages@v6
 

@@ -33,10 +33,11 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
-| `docs.yml` | Build DocFX documentation and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
+| `docs.yml` | Build DocFX documentation, tag every page with a TDM reservation (`tdm-reservation`, `noai`) and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
 | `code-analysis.yml` | CodeQL; uploads to code scanning where the repository has it, otherwise keeps the SARIF as the `codeql-results` artifact. Inherits the caller's permissions: grant `contents: read`, `security-events: write`, plus `actions: read` in a private repository | `language` |
 | `lint-code.yml` | `dotnet format` with auto fix, or check-only as a release gate; inherits the caller's permissions: grant `contents: write`, `checks: write` for auto fix, `contents: read`, `checks: write` for check-only | `dir`, `check-only`, `ref` |
 | `lint-commit.yml` | commitlint + fixup guard; skipped on Dependabot PRs. Without `config` it uses the shared config inside the workflow: the ai-kit commit types plus `product` | `config` |
+| `lint-license.yml` | `LICENSE` exists and matches the shared template (`no-ai` for a public repository, `proprietary` for a private one, or `exists` to only require the file); the copyright line must name `holder`. Reads the templates from `jirikostiha/ci@v1`, so the templates must be in the released `v1` | `license`, `holder` |
 | `benchmark.yml` | BenchmarkDotNet + result storage | `project`, `ref` |
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
@@ -144,14 +145,14 @@ Dependabot secret. Run it after creating such a repository or replacing the toke
 ## Licenses
 
 `cmd/Set-NoAiLicense.ps1` writes the `LICENSE` of one or more repositories from a template
-in `templates/`, keeping the holder of the existing `LICENSE`:
+in `templates/`. The default holder is `Jiri Kostiha`; an existing `LICENSE` keeps its own holder unless `-Holder` is given:
 
 | Template | Use for | Year |
 |---|---|---|
-| `templates/LICENSE-no-ai.template` | public repositories: MIT NON-AI License of [non-ai-licenses](https://github.com/non-ai-licenses/non-ai-licenses), forbids AI training | kept from the existing `LICENSE` |
+| `templates/LICENSE-no-ai.template` | public repositories: MIT NON-AI License of [non-ai-licenses](https://github.com/non-ai-licenses/non-ai-licenses), forbids AI training; modified: "without restriction" is removed from the grant, and the file says so | kept from the existing `LICENSE` |
 | `templates/LICENSE-proprietary.template` (`-Proprietary`) | private repositories: all rights reserved | year of the first commit |
 
-The script refuses to replace one of these licenses with the other. It does not edit project
+The script refuses to replace one of these licenses with the other, and to replace a license it does not write (such as Apache-2.0) unless `-Force` is given; a plain MIT is replaced. Tests: `Invoke-Pester cmd/Set-NoAiLicense.Tests.ps1` (Pester 5). It does not edit project
 files: it warns about every `PackageLicenseExpression` of `MIT`, which must become
 `PackageLicenseFile` with `LICENSE` packed.
 

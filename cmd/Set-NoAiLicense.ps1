@@ -30,6 +30,12 @@ The copyright year, used when a repository has no LICENSE to read it from.
 .\Set-NoAiLicense.ps1 -Path ..\..\smath, ..\..\atin
 Updates the LICENSE of both repositories and lists the project files that need a change.
 #>
+<#---
+name: Set-NoAiLicense
+kind: cmd
+description: Writes the LICENSE of one or more repositories from a template: the MIT NON-AI License for a public repository, or with -Proprietary the all-rights-reserved license for a private one. Use when a repository needs a license or its holder changes.
+version: 1.0.0
+---#>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)]

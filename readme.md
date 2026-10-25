@@ -155,6 +155,9 @@ The script refuses to replace one of these licenses with the other. It does not 
 files: it warns about every `PackageLicenseExpression` of `MIT`, which must become
 `PackageLicenseFile` with `LICENSE` packed.
 
+`godot-sharp-some` stays on plain MIT: it is published to the Godot Asset Library, which takes
+open-source licenses only.
+
 ## Notes
 
 - Reusable workflows reference the composite action by **full path**

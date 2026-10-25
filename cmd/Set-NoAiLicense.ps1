@@ -44,7 +44,7 @@ Set-StrictMode -Version Latest
 
 $templateName = $Proprietary ? 'LICENSE-proprietary.template' : 'LICENSE-no-ai.template'
 $template = Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\templates\$templateName") -Raw
-# The title line tells whether a repository already has this license.
+# The title line tells which license a repository has.
 $title = ($template -split '\r?\n')[0]
 
 foreach ($root in $Path) {
@@ -66,9 +66,10 @@ foreach ($root in $Path) {
     }
 
     if ($Proprietary) {
-        $firstCommitYears = git -C $root log --reverse --format=%cd --date=format:%Y
-        if ($LASTEXITCODE -ne 0 -or -not $firstCommitYears) { throw "Cannot read the first commit of $root." }
-        $repoYear = @($firstCommitYears)[0]
+        # The author date survives a rebase, which rewrites the committer date.
+        $commitYears = git -C $root log --format=%ad --date=format:%Y
+        if ($LASTEXITCODE -ne 0 -or -not $commitYears) { throw "Cannot read the commits of $root." }
+        $repoYear = @($commitYears | Sort-Object)[0]
     }
 
     $text = $template.Replace('{{YEAR}}', "$repoYear").Replace('{{HOLDER}}', $repoHolder)

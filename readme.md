@@ -141,6 +141,20 @@ no shared secrets, so `cmd/Set-NuGetFeedSecret.ps1` finds every repository whose
 `nuget.config` uses the feed and sets the token there as an Actions and a
 Dependabot secret. Run it after creating such a repository or replacing the token.
 
+## Licenses
+
+`cmd/Set-NoAiLicense.ps1` writes the `LICENSE` of one or more repositories from a template
+in `templates/`, keeping the holder of the existing `LICENSE`:
+
+| Template | Use for | Year |
+|---|---|---|
+| `templates/LICENSE-no-ai.template` | public repositories: MIT-derived, forbids AI training | kept from the existing `LICENSE` |
+| `templates/LICENSE-proprietary.template` (`-Proprietary`) | private repositories: all rights reserved | year of the first commit |
+
+The script refuses to replace one of these licenses with the other. It does not edit project
+files: it warns about every `PackageLicenseExpression` of `MIT`, which must become
+`PackageLicenseFile` with `LICENSE` packed.
+
 ## Notes
 
 - Reusable workflows reference the composite action by **full path**

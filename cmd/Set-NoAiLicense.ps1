@@ -43,9 +43,11 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $templateName = $Proprietary ? 'LICENSE-proprietary.template' : 'LICENSE-no-ai.template'
+$otherName = $Proprietary ? 'LICENSE-no-ai.template' : 'LICENSE-proprietary.template'
 $template = Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\templates\$templateName") -Raw
 # The title line tells which license a repository has.
 $title = ($template -split '\r?\n')[0]
+$otherTitle = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\templates\$otherName") -Raw) -split '\r?\n')[0]
 
 foreach ($root in $Path) {
     $root = (Resolve-Path -LiteralPath $root).Path
@@ -58,6 +60,10 @@ foreach ($root in $Path) {
         if ($existing.StartsWith($title)) {
             Write-Host "$root already has this license." -ForegroundColor Yellow
             continue
+        }
+        # Never turn a proprietary license into a permissive one, or the other way round, by accident.
+        if ($existing.StartsWith($otherTitle)) {
+            throw "$licensePath has the other license of this script. Remove it first to switch."
         }
         if ($existing -match '(?m)^Copyright \(c\) (\d{4}) (.+?)\.?(?: All rights reserved\.)?\s*$') {
             $repoYear = $Matches[1]

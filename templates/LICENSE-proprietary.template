@@ -1,0 +1,62 @@
+Proprietary License. All Rights Reserved.
+
+Copyright (c) {{YEAR}} {{HOLDER}}. All rights reserved.
+
+This software, its source code, documentation, data, configuration and all
+associated files (the "Software") are the confidential and proprietary property
+of the copyright holder. The Software is not open source, is not free software
+and is not made available to the public.
+
+1. No license. No license or right of any kind is granted, expressly, by
+   implication, by estoppel or otherwise. Access to the Software does not grant
+   any right to it.
+
+2. Prohibited acts. Without prior written permission of the copyright holder, no
+   person may use, run, copy, reproduce, modify, translate, adapt, merge,
+   publish, distribute, sublicense, sell, lease, lend, host, disclose, or make
+   available to any third party the Software or any part of it, or create any
+   derivative work based on it.
+
+3. No reverse engineering. No person may decompile, disassemble or otherwise
+   attempt to derive the source code, algorithms or structure of any compiled
+   form of the Software, except to the extent that applicable law expressly
+   permits it despite this prohibition.
+
+4. No use for artificial intelligence. No person may use the Software, or any
+   copy, excerpt, summary, embedding, index or derivative of it, to train,
+   fine-tune, evaluate, test or otherwise develop any artificial intelligence,
+   machine learning or large language model, or include it in any dataset for
+   that purpose. No person may submit the Software to any third-party
+   artificial intelligence service that retains it or uses it for such a
+   purpose. The copyright holder expressly reserves this right, including under
+   Article 4(3) of Directive (EU) 2019/790.
+
+5. Confidentiality. Any person who has access to the Software shall keep it
+   strictly confidential and shall protect it with at least the care used for
+   their own most sensitive information, and not less than reasonable care.
+
+6. Notices. No person may remove or alter any copyright, confidentiality or
+   other proprietary notice, including this license.
+
+7. Termination. Any breach of this license terminates, without notice, any
+   permission that the copyright holder has given. On request, or on
+   termination, every person shall immediately stop using the Software and
+   shall delete or return every copy of it.
+
+8. Remedies. Unauthorized use of the Software infringes the copyright and the
+   confidentiality rights of the copyright holder, who may seek injunctive
+   relief, damages and every other remedy available by law.
+
+9. Severability. If any provision of this license is held unenforceable, the
+   remaining provisions stay in full force, and the unenforceable provision is
+   enforced to the maximum extent permitted by law.
+
+10. Permission. A permission is valid only if it is written, signed by the
+    copyright holder and names the person and the purpose it covers.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

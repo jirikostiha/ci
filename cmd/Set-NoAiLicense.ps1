@@ -3,14 +3,19 @@
 Writes the LICENSE with the AI training restriction into one or more repositories.
 
 .DESCRIPTION
-Renders templates/LICENSE-no-ai.template into the LICENSE file at the root of each given
-repository. The year and the holder are taken from the copyright line of the existing LICENSE,
-so a repository keeps its own. The script does not edit project files: it lists the ones that
+Renders templates/LICENSE-no-ai.template, or with -Proprietary templates/LICENSE-proprietary.template,
+into the LICENSE file at the root of each given repository. The holder is taken from the copyright
+line of the existing LICENSE, so a repository keeps its own. The year is taken from there too, except
+with -Proprietary, where it is the year of the first commit of the repository. The script does not
+edit project files: it lists the ones that
 still declare the MIT expression, because NuGet then shows MIT instead of this license.
 Commit the result in each repository yourself.
 
 .PARAMETER Path
 Root folder of each repository to update.
+
+.PARAMETER Proprietary
+Writes the all-rights-reserved license for a private repository instead of MIT with the restriction.
 
 .PARAMETER Holder
 The copyright holder, used when a repository has no LICENSE to read it from.
@@ -27,6 +32,8 @@ param(
     [Parameter(Mandatory)]
     [string[]] $Path,
 
+    [switch] $Proprietary,
+
     [string] $Holder = 'jirikostiha',
 
     [int] $Year = (Get-Date).Year
@@ -35,7 +42,10 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$template = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\templates\LICENSE-no-ai.template') -Raw
+$templateName = $Proprietary ? 'LICENSE-proprietary.template' : 'LICENSE-no-ai.template'
+$template = Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\templates\$templateName") -Raw
+# The title line tells whether a repository already has this license.
+$title = ($template -split '\r?\n')[0]
 
 foreach ($root in $Path) {
     $root = (Resolve-Path -LiteralPath $root).Path
@@ -45,18 +55,24 @@ foreach ($root in $Path) {
 
     if (Test-Path -LiteralPath $licensePath) {
         $existing = Get-Content -LiteralPath $licensePath -Raw
-        if ($existing -match 'AI Training Restriction') {
-            Write-Host "$root already has the restriction." -ForegroundColor Yellow
+        if ($existing.StartsWith($title)) {
+            Write-Host "$root already has this license." -ForegroundColor Yellow
             continue
         }
-        if ($existing -match '(?m)^Copyright \(c\) (\d{4}) (.+?)\s*$') {
+        if ($existing -match '(?m)^Copyright \(c\) (\d{4}) (.+?)\.?(?: All rights reserved\.)?\s*$') {
             $repoYear = $Matches[1]
             $repoHolder = $Matches[2]
         }
     }
 
+    if ($Proprietary) {
+        $firstCommitYears = git -C $root log --reverse --format=%cd --date=format:%Y
+        if ($LASTEXITCODE -ne 0 -or -not $firstCommitYears) { throw "Cannot read the first commit of $root." }
+        $repoYear = @($firstCommitYears)[0]
+    }
+
     $text = $template.Replace('{{YEAR}}', "$repoYear").Replace('{{HOLDER}}', $repoHolder)
-    if ($PSCmdlet.ShouldProcess($licensePath, 'Write LICENSE with AI training restriction')) {
+    if ($PSCmdlet.ShouldProcess($licensePath, "Write LICENSE from $templateName")) {
         Set-Content -LiteralPath $licensePath -Value $text -NoNewline -Encoding utf8
         Write-Host "Updated $licensePath" -ForegroundColor Green
     }

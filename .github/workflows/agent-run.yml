@@ -1,0 +1,145 @@
+name: Agent run # reusable: an AI agent implements one issue and opens or updates its pull request
+
+on:
+  workflow_call:
+    inputs:
+      issue:
+        description: "Issue number to implement"
+        required: true
+        type: string
+      project-number:
+        description: "Project number whose Status moves with the run"
+        required: true
+        type: string
+    secrets:
+      agent-token:
+        description: "Personal access token: Projects read/write, contents, pull requests and issues of the repository"
+        required: true
+      anthropic-api-key:
+        description: "Claude API key"
+        required: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read # all writes use agent-token, so the pushed branch also triggers CI
+    env:
+      BRANCH: feat/issue-${{ inputs.issue }}
+      # Provider-neutral task: every agent adapter below gets exactly this text.
+      TASK: |
+        Implement issue #${{ inputs.issue }} of ${{ github.repository }}.
+        Read it with `gh issue view ${{ inputs.issue }}`. If the current branch already has an open pull request,
+        read its review with `gh pr view --comments` and address it. Follow this repository's AGENTS.md.
+        Work only on the current branch, and commit with Conventional Commits.
+        Build and run the tests before the last commit. Do not push and do not touch main.
+        If the issue is unclear or cannot be done, make no commit and explain why in a comment on the issue.
+    steps:
+      # The token is not persisted in .git/config: the agent can run git commands and must not be able to read it.
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.agent-token }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A rework run (card moved back to Ready after review) continues the existing branch.
+      - name: Prepare branch
+        id: branch
+        run: |
+          set -euo pipefail
+          git config user.name "agent[bot]"
+          git config user.email "agent@users.noreply.github.com"
+          if git rev-parse --verify --quiet "origin/$BRANCH" > /dev/null; then
+            git switch -c "$BRANCH" "origin/$BRANCH"
+          else
+            git switch -c "$BRANCH"
+          fi
+          echo "start=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # AGENTS.md points at the kit beside the repository (../ai-kit); it is private, hence the token.
+      # The header goes on the command line only, so neither the clone's config nor its URL keep the token.
+      - name: Clone ai-kit
+        env:
+          TOKEN: ${{ secrets.agent-token }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" clone --depth 1 "https://github.com/${OWNER}/ai-kit.git" ../ai-kit
+
+      # Installs the SDK pinned in global.json.
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+
+      # The only provider-specific step: it runs TASK and leaves its commits on $BRANCH.
+      # Moving to another model means replacing this step; the rest of the workflow stays.
+      - name: Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic-api-key }}
+          github_token: ${{ secrets.agent-token }}
+          prompt: ${{ env.TASK }}
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Write,Edit,Glob,Grep,Bash(git:*),Bash(dotnet:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh pr view:*)"
+
+      - name: Push and open pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.agent-token }}
+          ISSUE: ${{ inputs.issue }}
+          START: ${{ steps.branch.outputs.start }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse HEAD)" = "$START" ]; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "The agent made no commit."
+            exit 0
+          fi
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push --set-upstream origin "$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          # A rework run updates the open pull request by the push above.
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]; then
+            base=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)
+            title=$(git log -1 --format=%s)
+            body=$(printf 'Closes #%s\n\nImplemented by the agent, run: %s' "$ISSUE" "$RUN_URL")
+            gh pr create --base "$base" --head "$BRANCH" --title "$title" --body "$body"
+          fi
+
+      - name: Move to In Review
+        if: steps.pr.outputs.pushed == 'true'
+        uses: jirikostiha/ci/.github/actions/project-status@v1
+        with:
+          token: ${{ secrets.agent-token }}
+          owner: ${{ github.repository_owner }}
+          project-number: ${{ inputs.project-number }}
+          repository: ${{ github.repository }}
+          issue: ${{ inputs.issue }}
+          status: In Review
+
+      # Nothing pushed (no commit or a failed run): park the card, so the poll does not pick it up again,
+      # and say why on the issue.
+      - name: Move to Backlog
+        if: (failure() || steps.pr.outputs.pushed == 'false') && steps.pr.outputs.pushed != 'true'
+        uses: jirikostiha/ci/.github/actions/project-status@v1
+        with:
+          token: ${{ secrets.agent-token }}
+          owner: ${{ github.repository_owner }}
+          project-number: ${{ inputs.project-number }}
+          repository: ${{ github.repository }}
+          issue: ${{ inputs.issue }}
+          status: Backlog
+
+      - name: Report on the issue
+        if: (failure() || steps.pr.outputs.pushed == 'false') && steps.pr.outputs.pushed != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.agent-token }}
+          ISSUE: ${{ inputs.issue }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$ISSUE" --body "The agent run ended without changes; the card is back in Backlog. Run: $RUN_URL"

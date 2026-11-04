@@ -1,0 +1,102 @@
+name: Agent poll # not reusable: runs here on a schedule so the polling costs no private-repository minutes
+
+# GitHub has no trigger for Projects (v2) card moves on a user-owned project, so poll the board:
+# every issue in Status "Ready" is moved to "In Progress" and handed to the agent workflow of its repository.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+# One poll at a time, so a slow run never hands the same card out twice.
+concurrency:
+  group: agent-poll
+  cancel-in-progress: false
+
+env:
+  OWNER: ${{ github.repository_owner }}
+  PROJECT_NUMBER: ${{ vars.AGENT_PROJECT_NUMBER }}
+  # Caps how many agent runs one poll may start.
+  MAX_PER_POLL: 3
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      issues: ${{ steps.find.outputs.issues }}
+    steps:
+      - name: Find Ready issues
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          set -euo pipefail
+          # This repository is public, so the log is too: print no repository names or titles.
+          # --paginate walks every page: finished cards pile up, and a Ready card past the first 100 must still be found.
+          issues=$(gh api graphql --paginate -F owner="$OWNER" -F number="$PROJECT_NUMBER" -f query='
+            query($owner: String!, $number: Int!, $endCursor: String) {
+              user(login: $owner) { projectV2(number: $number) {
+                items(first: 100, after: $endCursor) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes {
+                    status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
+                    content { ... on Issue { number state repository { nameWithOwner } } }
+                  }
+                }
+              } }
+            }' --jq '.data.user.projectV2.items.nodes[]
+                     | select(.status.name == "Ready" and .content.state == "OPEN")
+                     | {repository: .content.repository.nameWithOwner, issue: .content.number}' \
+                   | jq -sc ".[0:$MAX_PER_POLL]")
+          echo "issues=$issues" >> "$GITHUB_OUTPUT"
+          echo "Ready issues: $(jq length <<< "$issues")"
+
+  dispatch:
+    needs: find
+    if: needs.find.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # the local composite action
+    strategy:
+      fail-fast: false
+      matrix:
+        item: ${{ fromJson(needs.find.outputs.issues) }}
+    name: dispatch ${{ strategy.job-index }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/actions
+
+      # Moving the card first is the lock: the next poll no longer sees the issue as Ready.
+      - name: Move to In Progress
+        uses: ./.github/actions/project-status
+        with:
+          token: ${{ secrets.AGENT_TOKEN }}
+          owner: ${{ env.OWNER }}
+          project-number: ${{ env.PROJECT_NUMBER }}
+          repository: ${{ matrix.item.repository }}
+          issue: ${{ matrix.item.issue }}
+          status: In Progress
+
+      - name: Start the agent workflow
+        id: start
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          REPO: ${{ matrix.item.repository }}
+          ISSUE: ${{ matrix.item.issue }}
+        # The project number travels with the run, so the repositories keep no copy of it.
+        run: gh workflow run agent.yml --repo "$REPO" -f issue="$ISSUE" -f project-number="$PROJECT_NUMBER"
+
+      # Without a started run the card would stay In Progress for good.
+      - name: Move back to Ready
+        if: failure() && steps.start.outcome == 'failure'
+        uses: ./.github/actions/project-status
+        with:
+          token: ${{ secrets.AGENT_TOKEN }}
+          owner: ${{ env.OWNER }}
+          project-number: ${{ env.PROJECT_NUMBER }}
+          repository: ${{ matrix.item.repository }}
+          issue: ${{ matrix.item.issue }}
+          status: Ready

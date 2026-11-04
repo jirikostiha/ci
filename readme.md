@@ -23,6 +23,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 
 | Action | Purpose |
 | --- | --- |
+| `actions/project-status` | Move an issue's card on a user-owned GitHub Project (v2) to a Status option |
 | `actions/setup-dotnet` | Install the .NET SDK (`dotnet-version` plus the SDK pinned in the repository's `global.json`, if any) and print info |
 
 ### Reusable workflows (`workflow_call`)
@@ -31,6 +32,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | --- | --- | --- |
 | `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional pack + artifacts | `solution`, `configuration`, `artifacts` |
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file` |
+| `agent-run.yml` | An AI agent implements one issue on `feat/issue-N`, opens or updates its pull request and moves the card to *In Review*; without a push it parks the card in *Backlog* and comments on the issue. Started by `agent-poll.yml` (this repository) for cards in *Ready* | `issue`, `project-number` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
 | `docs.yml` | Build DocFX documentation, tag every page with a TDM reservation (`tdm-reservation`, `noai`) and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |

@@ -1,0 +1,72 @@
+name: Set project status
+description: Moves an issue's card on a user-owned GitHub Project (v2) to a Status option. Single source of truth for board moves.
+
+inputs:
+  token:
+    description: "Personal access token with Projects read/write and access to the issue's repository"
+    required: true
+  owner:
+    description: "Login of the user that owns the project"
+    required: true
+  project-number:
+    description: "Project number, as in the project URL"
+    required: true
+  repository:
+    description: "owner/name of the repository that holds the issue"
+    required: true
+  issue:
+    description: "Issue number"
+    required: true
+  status:
+    description: "Name of the Status option to set, e.g. In Progress"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set Status
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        OWNER: ${{ inputs.owner }}
+        NUMBER: ${{ inputs.project-number }}
+        REPO: ${{ inputs.repository }}
+        ISSUE: ${{ inputs.issue }}
+        STATUS: ${{ inputs.status }}
+      run: |
+        set -euo pipefail
+
+        project=$(gh api graphql -F owner="$OWNER" -F number="$NUMBER" -f query='
+          query($owner: String!, $number: Int!) {
+            user(login: $owner) { projectV2(number: $number) {
+              id
+              field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+            } }
+          }' --jq '.data.user.projectV2')
+        project_id=$(jq -r '.id' <<< "$project")
+        field_id=$(jq -r '.field.id' <<< "$project")
+        option_id=$(jq -r --arg s "$STATUS" '.field.options[] | select(.name == $s) | .id' <<< "$project")
+        if [ -z "$option_id" ]; then
+          echo "::error::Status option '$STATUS' not found in project $NUMBER."
+          exit 1
+        fi
+
+        item_id=$(gh api graphql -F owner="${REPO%%/*}" -F name="${REPO##*/}" -F issue="$ISSUE" -f query='
+          query($owner: String!, $name: String!, $issue: Int!) {
+            repository(owner: $owner, name: $name) { issue(number: $issue) {
+              projectItems(first: 20) { nodes { id project { id } } }
+            } }
+          }' --jq ".data.repository.issue.projectItems.nodes[] | select(.project.id == \"$project_id\") | .id")
+        if [ -z "$item_id" ]; then
+          echo "::error::The issue is not an item of project $NUMBER."
+          exit 1
+        fi
+
+        gh api graphql -F project="$project_id" -F item="$item_id" -F field="$field_id" -F option="$option_id" -f query='
+          mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: $project, itemId: $item, fieldId: $field,
+              value: { singleSelectOptionId: $option }
+            }) { projectV2Item { id } }
+          }' > /dev/null
+        echo "Status set to '$STATUS'."
+      shell: bash

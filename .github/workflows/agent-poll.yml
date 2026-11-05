@@ -34,6 +34,7 @@ jobs:
           set -euo pipefail
           # This repository is public, so the log is too: print no repository names or titles.
           # --paginate walks every page: finished cards pile up, and a Ready card past the first 100 must still be found.
+          # shellcheck disable=SC2016 # the $variables in the query are GraphQL variables, not shell ones
           issues=$(gh api graphql --paginate -F owner="$OWNER" -F number="$PROJECT_NUMBER" -f query='
             query($owner: String!, $number: Int!, $endCursor: String) {
               user(login: $owner) { projectV2(number: $number) {

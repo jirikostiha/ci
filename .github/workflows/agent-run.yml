@@ -18,6 +18,9 @@ on:
       anthropic-api-key:
         description: "Claude API key"
         required: true
+      NUGET_GH_TOKEN:
+        description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
+        required: false
 
 jobs:
   run:
@@ -72,6 +75,8 @@ jobs:
       # Installs the SDK pinned in global.json.
       - name: Setup .NET
         uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          nuget-token: ${{ secrets.NUGET_GH_TOKEN }}
 
       # The only provider-specific step: it runs TASK and leaves its commits on $BRANCH.
       # Moving to another model means replacing this step; the rest of the workflow stays.

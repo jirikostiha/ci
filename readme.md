@@ -32,7 +32,6 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | --- | --- | --- |
 | `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional pack + artifacts | `solution`, `configuration`, `artifacts` |
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file` |
-| `agent-run.yml` | An AI agent implements one issue on `feat/issue-N`, opens or updates its pull request and moves the card to *In Review*; without a push it parks the card in *Backlog* and comments on the issue. Started by `agent-poll.yml` (this repository) for cards in *Ready* | `issue`, `project-number` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
 | `docs.yml` | Build DocFX documentation, tag every page with a TDM reservation (`tdm-reservation`, `noai`) and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
@@ -44,6 +43,21 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `clean-history.yml` | Prune old workflow runs | `retain-days` |
 | `auto-approve.yml` | Approve trusted bot PRs | `actors` |
 | `auto-merge.yml` | Merge a trusted bot PR once every check passes (Dependabot squash commits are rewritten to `<type>(deps): bump ...`); trigger via `workflow_run` of `Auto Approve` and grant `contents: write`, `pull-requests: write`, `actions: read`, `checks: read`, `statuses: read` | `head-branch` |
+
+### Agent board automation (runs in this repository, not called)
+
+An issue whose card on the user project reaches *Ready* is implemented by an AI agent, for any repository of the
+owner. Nothing is installed in those repositories: the project is polled from here.
+
+| Workflow | Purpose |
+| --- | --- |
+| `agent-poll.yml` | Every 5 minutes: moves each *Ready* card to *In Progress* and starts `agent-run.yml` for it |
+| `agent-run.yml` | Checks the repository out, runs the agent on `feat/issue-N`, opens or updates the pull request and moves the card to *In Review*; without a push it parks the card in *Backlog* and comments on the issue |
+
+Configuration of this repository, the only one: secrets `AGENT_TOKEN` (personal access token: contents, pull
+requests, issues, workflows and Projects read/write on the repositories), `ANTHROPIC_API_KEY` and `NUGET_GH_TOKEN`
+(optional, private NuGet feed); variable `AGENT_PROJECT_NUMBER`. This repository is public, so the logs of the
+runs are public too. Another model replaces only the `Agent` step of `agent-run.yml`.
 
 ### Inline templates (`templates/`, copy — do not call)
 

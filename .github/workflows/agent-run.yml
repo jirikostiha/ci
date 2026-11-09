@@ -1,38 +1,37 @@
-name: Agent run # reusable: an AI agent implements one issue and opens or updates its pull request
+name: Agent run # not reusable: an AI agent implements one issue of any repository and opens or updates its pull request
 
+# Started by the Agent poll workflow for a card in Ready. The logic and the secrets live here once, so a repository
+# needs nothing but a card on the project. This repository is public, so its logs are too: what the agent prints
+# about a private repository is readable by anyone.
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
+      repository:
+        description: "owner/name of the repository that holds the issue"
+        required: true
+        type: string
       issue:
         description: "Issue number to implement"
         required: true
         type: string
-      project-number:
-        description: "Project number whose Status moves with the run"
-        required: true
-        type: string
-    secrets:
-      agent-token:
-        description: "Personal access token: Projects read/write, contents, pull requests and issues of the repository"
-        required: true
-      anthropic-api-key:
-        description: "Claude API key"
-        required: true
-      NUGET_GH_TOKEN:
-        description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
-        required: false
+
+concurrency:
+  group: agent-${{ inputs.repository }}-${{ inputs.issue }}
+  cancel-in-progress: false
 
 jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
-      contents: read # all writes use agent-token, so the pushed branch also triggers CI
+      contents: read # all writes use AGENT_TOKEN, so the pushed branch also triggers CI
     env:
       BRANCH: feat/issue-${{ inputs.issue }}
+      # Points every gh command, the agent's included, at the repository of the issue.
+      GH_REPO: ${{ inputs.repository }}
       # Provider-neutral task: every agent adapter below gets exactly this text.
       TASK: |
-        Implement issue #${{ inputs.issue }} of ${{ github.repository }}.
+        Implement issue #${{ inputs.issue }} of ${{ inputs.repository }}.
         Read it with `gh issue view ${{ inputs.issue }}`. If the current branch already has an open pull request,
         read its review with `gh pr view --comments` and address it. Follow this repository's AGENTS.md.
         Work only on the current branch, and commit with Conventional Commits.
@@ -42,7 +41,8 @@ jobs:
       # The token is not persisted in .git/config: the agent can run git commands and must not be able to read it.
       - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.agent-token }}
+          repository: ${{ inputs.repository }}
+          token: ${{ secrets.AGENT_TOKEN }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -64,7 +64,7 @@ jobs:
       # The header goes on the command line only, so neither the clone's config nor its URL keep the token.
       - name: Clone ai-kit
         env:
-          TOKEN: ${{ secrets.agent-token }}
+          TOKEN: ${{ secrets.AGENT_TOKEN }}
           OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
@@ -83,8 +83,8 @@ jobs:
       - name: Agent
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.anthropic-api-key }}
-          github_token: ${{ secrets.agent-token }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.AGENT_TOKEN }}
           prompt: ${{ env.TASK }}
           claude_args: >-
             --max-turns 40
@@ -93,7 +93,7 @@ jobs:
       - name: Push and open pull request
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.agent-token }}
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
           ISSUE: ${{ inputs.issue }}
           START: ${{ steps.branch.outputs.start }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -120,10 +120,10 @@ jobs:
         if: steps.pr.outputs.pushed == 'true'
         uses: jirikostiha/ci/.github/actions/project-status@v1
         with:
-          token: ${{ secrets.agent-token }}
+          token: ${{ secrets.AGENT_TOKEN }}
           owner: ${{ github.repository_owner }}
-          project-number: ${{ inputs.project-number }}
-          repository: ${{ github.repository }}
+          project-number: ${{ vars.AGENT_PROJECT_NUMBER }}
+          repository: ${{ inputs.repository }}
           issue: ${{ inputs.issue }}
           status: In Review
 
@@ -133,17 +133,17 @@ jobs:
         if: (failure() || steps.pr.outputs.pushed == 'false') && steps.pr.outputs.pushed != 'true'
         uses: jirikostiha/ci/.github/actions/project-status@v1
         with:
-          token: ${{ secrets.agent-token }}
+          token: ${{ secrets.AGENT_TOKEN }}
           owner: ${{ github.repository_owner }}
-          project-number: ${{ inputs.project-number }}
-          repository: ${{ github.repository }}
+          project-number: ${{ vars.AGENT_PROJECT_NUMBER }}
+          repository: ${{ inputs.repository }}
           issue: ${{ inputs.issue }}
           status: Backlog
 
       - name: Report on the issue
         if: (failure() || steps.pr.outputs.pushed == 'false') && steps.pr.outputs.pushed != 'true'
         env:
-          GH_TOKEN: ${{ secrets.agent-token }}
+          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
           ISSUE: ${{ inputs.issue }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |

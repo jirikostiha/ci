@@ -1,7 +1,7 @@
 name: Agent poll # not reusable: runs here on a schedule so the polling costs no private-repository minutes
 
 # GitHub has no trigger for Projects (v2) card moves on a user-owned project, so poll the board:
-# every issue in Status "Ready" is moved to "In Progress" and handed to the agent workflow of its repository.
+# every issue in Status "Ready" is moved to "In Progress" and handed to the Agent run workflow of this repository.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -60,6 +60,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read # the local composite action
+      actions: write # starts the Agent run workflow
     strategy:
       fail-fast: false
       matrix:
@@ -84,11 +85,10 @@ jobs:
       - name: Start the agent workflow
         id: start
         env:
-          GH_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ matrix.item.repository }}
           ISSUE: ${{ matrix.item.issue }}
-        # The project number travels with the run, so the repositories keep no copy of it.
-        run: gh workflow run agent.yml --repo "$REPO" -f issue="$ISSUE" -f project-number="$PROJECT_NUMBER"
+        run: gh workflow run agent-run.yml -f repository="$REPO" -f issue="$ISSUE"
 
       # Without a started run the card would stay In Progress for good.
       - name: Move back to Ready

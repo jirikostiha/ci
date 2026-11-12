@@ -33,6 +33,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 | `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional pack + artifacts | `solution`, `configuration`, `artifacts` |
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip `binaries` artifact as `<product>_<tag>.zip`, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
+| `godot-export.yml` | Export a Godot .NET project on Windows with the Godot version its `Godot.NET.Sdk` names, through the repository's ai-kit `cmd/Export-Project.ps1` (fails on Godot errors or a missing project assembly); upload the exported files as an artifact (`binaries` feeds `github-release.yml`) | `project-dir`, `preset`, `artifact-name` |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
 | `docs.yml` | Build DocFX documentation, tag every page with a TDM reservation (`tdm-reservation`, `noai`) and deploy to GitHub Pages | `version`, `include-benchmarks`, `ref` |
 | `code-analysis.yml` | CodeQL; uploads to code scanning where the repository has it, otherwise keeps the SARIF as the `codeql-results` artifact. Inherits the caller's permissions: grant `contents: read`, `security-events: write`, plus `actions: read` in a private repository | `language` |

@@ -1,0 +1,95 @@
+name: Godot export # reusable: export a Godot .NET project with the Godot version its project names
+
+on:
+  workflow_call:
+    inputs:
+      project-dir:
+        description: "Directory holding project.godot, export_presets.cfg and the project's .csproj"
+        required: true
+        type: string
+      preset:
+        description: "Export preset name from export_presets.cfg"
+        type: string
+        default: "Windows Desktop"
+      artifact-name:
+        description: "Name of the uploaded artifact holding the exported files"
+        type: string
+        default: "binaries"
+      dotnet-version:
+        type: string
+        default: "8.0.x"
+      ref:
+        description: "Git ref to export (defaults to the triggering ref)"
+        type: string
+        default: ""
+    secrets:
+      NUGET_GH_TOKEN:
+        description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
+        required: false
+
+jobs:
+  export:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    env:
+      PROJECT_DIR: ${{ inputs.project-dir }}
+      PRESET: ${{ inputs.preset }}
+      # Build servers left running keep the step's console open until they time out (~10 min).
+      MSBUILDDISABLENODEREUSE: "1"
+      UseSharedCompilation: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      # The export logic is ai-kit's cmd/Export-Project.ps1, the same script a developer runs locally.
+      - name: Check the export script
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath cmd/Export-Project.ps1)) {
+            throw "cmd/Export-Project.ps1 is missing; distribute it from ai-kit (tools/Sync-CmdScripts.ps1)."
+          }
+
+      - name: Setup .NET
+        uses: jirikostiha/ci/.github/actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          nuget-token: ${{ secrets.NUGET_GH_TOKEN }}
+
+      # The Godot.NET.Sdk version in the project file is the one definition of the engine version.
+      - name: Install Godot and export templates
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'  # the progress bar slows the 1 GB download down severalfold
+          $csproj = Get-ChildItem -LiteralPath $env:PROJECT_DIR -Filter *.csproj | Select-Object -First 1
+          if (-not $csproj) { throw "No .csproj in '$env:PROJECT_DIR'." }
+          $version = [regex]::Match((Get-Content -LiteralPath $csproj.FullName -Raw), 'Godot\.NET\.Sdk/([0-9][0-9A-Za-z.]*)').Groups[1].Value
+          if (-not $version) { throw "No Godot.NET.Sdk version in $($csproj.Name)." }
+          $base = "https://github.com/godotengine/godot-builds/releases/download/$version-stable"
+          $editor = "Godot_v$version-stable_mono_win64"
+          $tools = Join-Path $env:RUNNER_TEMP godot
+          Invoke-WebRequest "$base/$editor.zip" -OutFile "$tools.zip"
+          Expand-Archive "$tools.zip" $tools
+          Invoke-WebRequest "$base/Godot_v$version-stable_mono_export_templates.tpz" -OutFile "$tools-templates.zip"
+          Expand-Archive "$tools-templates.zip" "$tools-templates"
+          # Godot looks the templates up by the version they state, e.g. 4.7.2.stable.mono.
+          $templateVersion = (Get-Content -LiteralPath "$tools-templates/templates/version.txt" -Raw).Trim()
+          $templates = Join-Path $env:APPDATA "Godot/export_templates/$templateVersion"
+          New-Item -ItemType Directory -Force (Split-Path $templates) | Out-Null
+          Move-Item "$tools-templates/templates" $templates
+          "GODOT=$tools/$editor/${editor}_console.exe" >> $env:GITHUB_ENV
+
+      - name: Export ${{ inputs.preset }}
+        shell: pwsh
+        run: ./cmd/Export-Project.ps1 -Preset $env:PRESET -ProjectDir $env:PROJECT_DIR -Godot $env:GODOT -OutputDir "$env:RUNNER_TEMP/export"
+
+      - name: Upload artifact - ${{ inputs.artifact-name }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ runner.temp }}/export
+          if-no-files-found: error
+          retention-days: 90

@@ -16,6 +16,11 @@ on:
         description: "How many releases to retain, counted separately for prereleases and stable releases"
         type: number
         default: 8
+      artifact-pattern:
+        description: "Glob of the artifacts to zip, one folder each, when the release holds more than the single 'binaries' artifact (for example one per game variant)"
+        required: false
+        type: string
+        default: ""
       version-file:
         description: "Repository file carrying VersionPrefix/VersionSuffix; when set, the tag must equal v<prefix>[-<suffix>]"
         required: false
@@ -71,9 +76,18 @@ jobs:
         run: echo "prerelease=$(jq -nr --arg tag "$TAG" "\$tag | $IS_PRERELEASE")" >> "$GITHUB_OUTPUT"
 
       - name: Download artifact - binaries
+        if: inputs.artifact-pattern == ''
         uses: actions/download-artifact@v8
         with:
           name: binaries
+          path: build
+
+      # Without merge-multiple every matching artifact lands in a folder of its own name.
+      - name: Download artifacts - ${{ inputs.artifact-pattern }}
+        if: inputs.artifact-pattern != ''
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.artifact-pattern }}
           path: build
 
       - name: Zip binaries

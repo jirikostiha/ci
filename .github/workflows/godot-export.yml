@@ -26,6 +26,15 @@ on:
       NUGET_GH_TOKEN:
         description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
         required: false
+      ANDROID_KEYSTORE_BASE64:
+        description: "Base64 of the release keystore for the Android preset; a throwaway keystore is generated when it is missing"
+        required: false
+      ANDROID_KEYSTORE_USER:
+        description: "Key alias in the release keystore"
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        description: "Password of the release keystore and its key"
+        required: false
 
 jobs:
   export:
@@ -81,6 +90,60 @@ jobs:
           New-Item -ItemType Directory -Force (Split-Path $templates) | Out-Null
           Move-Item "$tools-templates/templates" $templates
           "GODOT=$tools/$editor/${editor}_console.exe" >> $env:GITHUB_ENV
+
+      # The prebuilt Android template only supports one .NET version, so Android is built through Gradle:
+      # the project gets the Gradle project (android/build) unpacked from the export templates.
+      - name: Prepare the Android Gradle build
+        if: inputs.preset == 'Android'
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          $templates = Get-ChildItem (Join-Path $env:APPDATA "Godot/export_templates") -Directory | Select-Object -First 1
+          $godotVersion = ($templates.Name -split '\.')[0..1] -join '.'
+          $build = Join-Path $env:PROJECT_DIR "android/build"
+          New-Item -ItemType Directory -Force $build | Out-Null
+          Expand-Archive (Join-Path $templates.FullName "android_source.zip") $build -Force
+          Set-Content (Join-Path $env:PROJECT_DIR "android/.build_version") $templates.Name -NoNewline
+
+          $keystores = Join-Path $env:RUNNER_TEMP keystores
+          New-Item -ItemType Directory -Force $keystores | Out-Null
+          $jdk = $env:JAVA_HOME_17_X64
+          if (-not $jdk) { $jdk = $env:JAVA_HOME }
+          $keytool = Join-Path $jdk "bin/keytool.exe"
+          # The debug key is only used by debug exports, but Godot wants the setting to be valid.
+          $debug = Join-Path $keystores debug.keystore
+          & $keytool -genkeypair -keystore $debug -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          if ($LASTEXITCODE) { throw "keytool failed ($LASTEXITCODE)." }
+
+          $release = Join-Path $keystores release.keystore
+          if ($env:KEYSTORE_BASE64) {
+            [IO.File]::WriteAllBytes($release, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+            $user = $env:KEYSTORE_USER; $password = $env:KEYSTORE_PASSWORD
+          } else {
+            Write-Warning "No ANDROID_KEYSTORE_* secrets: signing with a throwaway key; the APK cannot update an installed release."
+            $user = "release"; $password = [guid]::NewGuid().ToString("N")
+            & $keytool -genkeypair -keystore $release -alias $user -keyalg RSA -keysize 2048 -validity 10000 -storepass $password -keypass $password -dname "CN=Throwaway,O=Unsigned,C=US"
+            if ($LASTEXITCODE) { throw "keytool failed ($LASTEXITCODE)." }
+          }
+          "::add-mask::$password"
+          "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$release" >> $env:GITHUB_ENV
+          "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$user" >> $env:GITHUB_ENV
+          "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$password" >> $env:GITHUB_ENV
+
+          $sdk = $env:ANDROID_HOME
+          if (-not $sdk) { $sdk = $env:ANDROID_SDK_ROOT }
+          $settings = Join-Path $env:APPDATA "Godot/editor_settings-$godotVersion.tres"
+          @(
+            '[gd_resource type="EditorSettings" format=3]', '', '[resource]',
+            ('export/android/java_sdk_path = "{0}"' -f ($jdk -replace '\', '/')),
+            ('export/android/android_sdk_path = "{0}"' -f ($sdk -replace '\', '/')),
+            ('export/android/debug_keystore = "{0}"' -f ($debug -replace '\', '/')),
+            'export/android/debug_keystore_user = "androiddebugkey"',
+            'export/android/debug_keystore_pass = "android"'
+          ) | Set-Content $settings
 
       - name: Export ${{ inputs.preset }}
         shell: pwsh

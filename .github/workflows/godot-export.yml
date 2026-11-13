@@ -167,10 +167,20 @@ jobs:
             'export/android/debug_keystore_pass = "android"'
           ) | Set-Content $settings
 
+      # A healthy Android export takes about 6 minutes; a longer one is hung, so it is cut early.
       - name: Export ${{ inputs.preset }}
-        timeout-minutes: 25
+        timeout-minutes: ${{ inputs.preset == 'Android' && 12 || 25 }}
         shell: pwsh
         run: ./cmd/Export-Project.ps1 -Preset $env:PRESET -ProjectDir $env:PROJECT_DIR -Godot $env:GODOT -OutputDir "$env:RUNNER_TEMP/export"
+
+      # Evidence for a hung export: what still runs and what Gradle last wrote.
+      - name: Diagnose the failed Android export
+        if: (failure() || cancelled()) && inputs.preset == 'Android'
+        shell: pwsh
+        run: |
+          Get-Process | Where-Object { $_.ProcessName -match 'java|gradle|godot|adb|dotnet' } | Select-Object Id, ProcessName, StartTime, CPU | Format-Table | Out-String | Write-Host
+          Get-ChildItem "$HOME/.gradle/daemon" -Recurse -Filter '*.out.log' -ErrorAction SilentlyContinue | ForEach-Object { "--- $($_.FullName)"; Get-Content $_.FullName -Tail 40 }
+          Get-ChildItem "$env:PROJECT_DIR/android/build/build" -Recurse -Filter '*.log' -ErrorAction SilentlyContinue | Select-Object -First 3 | ForEach-Object { "--- $($_.FullName)"; Get-Content $_.FullName -Tail 40 }
 
       - name: Upload artifact - ${{ inputs.artifact-name }}
         uses: actions/upload-artifact@v7

@@ -108,6 +108,8 @@ jobs:
           New-Item -ItemType Directory -Force $build | Out-Null
           Expand-Archive (Join-Path $templates "android_source.zip") $build -Force
           Set-Content (Join-Path $env:PROJECT_DIR "android/.build_version") $env:GODOT_TEMPLATE_VERSION -NoNewline
+          # A Gradle daemon left running keeps the export's output open, so the step never ends.
+          Add-Content (Join-Path $build "gradle.properties") "`norg.gradle.daemon=false"
 
           $keystores = Join-Path $env:RUNNER_TEMP keystores
           New-Item -ItemType Directory -Force $keystores | Out-Null

@@ -146,8 +146,7 @@ jobs:
             $name = if ($suffix) { "$prefix-$suffix" } else { $prefix }
             $presets = Join-Path $env:PROJECT_DIR "export_presets.cfg"
             $text = Get-Content -LiteralPath $presets -Raw
-            $android = [regex]::Match($text, '(?ms)^\[preset\.(\d+)\]\s*?
-name="Android"')
+            $android = [regex]::Match($text, '(?ms)^\[preset\.(\d+)\]\s*name="Android"')
             if (-not $android.Success) { throw "No Android preset in $presets." }
             $header = "[preset.$($android.Groups[1].Value).options]"
             $text = $text.Replace($header, "$header`nversion/code=$code`nversion/name=`"$name`"")

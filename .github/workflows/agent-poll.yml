@@ -67,7 +67,7 @@ jobs:
         item: ${{ fromJson(needs.find.outputs.issues) }}
     name: dispatch ${{ strategy.job-index }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github/actions
 

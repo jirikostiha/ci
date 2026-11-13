@@ -90,6 +90,7 @@ jobs:
           New-Item -ItemType Directory -Force (Split-Path $templates) | Out-Null
           Move-Item "$tools-templates/templates" $templates
           "GODOT=$tools/$editor/${editor}_console.exe" >> $env:GITHUB_ENV
+          "GODOT_TEMPLATE_VERSION=$templateVersion" >> $env:GITHUB_ENV
 
       # The prebuilt Android template only supports one .NET version, so Android is built through Gradle:
       # the project gets the Gradle project (android/build) unpacked from the export templates.
@@ -101,12 +102,12 @@ jobs:
           KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_USER }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          $templates = Get-ChildItem (Join-Path $env:APPDATA "Godot/export_templates") -Directory | Select-Object -First 1
-          $godotVersion = ($templates.Name -split '\.')[0..1] -join '.'
+          $templates = Join-Path $env:APPDATA "Godot/export_templates/$env:GODOT_TEMPLATE_VERSION"
+          $godotVersion = ($env:GODOT_TEMPLATE_VERSION -split '\.')[0..1] -join '.'
           $build = Join-Path $env:PROJECT_DIR "android/build"
           New-Item -ItemType Directory -Force $build | Out-Null
-          Expand-Archive (Join-Path $templates.FullName "android_source.zip") $build -Force
-          Set-Content (Join-Path $env:PROJECT_DIR "android/.build_version") $templates.Name -NoNewline
+          Expand-Archive (Join-Path $templates "android_source.zip") $build -Force
+          Set-Content (Join-Path $env:PROJECT_DIR "android/.build_version") $env:GODOT_TEMPLATE_VERSION -NoNewline
 
           $keystores = Join-Path $env:RUNNER_TEMP keystores
           New-Item -ItemType Directory -Force $keystores | Out-Null

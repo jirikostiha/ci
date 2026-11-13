@@ -90,6 +90,11 @@ jobs:
           pattern: ${{ inputs.artifact-pattern }}
           path: build
 
+      # Artifacts drop file permissions, so a Linux export would unzip without its executable bit.
+      # Godot names its Linux binaries after the architecture.
+      - name: Restore executable bit - Linux binaries
+        run: find build -type f \( -name '*.x86_64' -o -name '*.x86_32' -o -name '*.arm64' -o -name '*.arm32' -o -name '*.rv64' \) -exec chmod +x {} +
+
       - name: Zip binaries
         run: |
           PRODUCT="${{ inputs.product-name }}"

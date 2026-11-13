@@ -172,11 +172,6 @@ jobs:
         shell: pwsh
         run: ./cmd/Export-Project.ps1 -Preset $env:PRESET -ProjectDir $env:PROJECT_DIR -Godot $env:GODOT -OutputDir "$env:RUNNER_TEMP/export"
 
-      - name: Show the processes a stuck export left behind
-        if: failure() || cancelled()
-        shell: pwsh
-        run: Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'java|adb|gradle|dotnet|godot' } | Select-Object ProcessId, Name, CommandLine | Format-List
-
       - name: Upload artifact - ${{ inputs.artifact-name }}
         uses: actions/upload-artifact@v7
         with:

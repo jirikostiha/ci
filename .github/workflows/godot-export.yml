@@ -134,6 +134,26 @@ jobs:
           "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$user" >> $env:GITHUB_ENV
           "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$password" >> $env:GITHUB_ENV
 
+          # The product's own version (product_version.props, as the release uses it) becomes the app's version.
+          # Android orders installs by an integer: major * 10000 + minor * 100 + patch, so 0.0.9 is 9 and 1.2.3 is 10203.
+          $props = "product_version.props"
+          if (Test-Path -LiteralPath $props) {
+            $group = ([xml](Get-Content -LiteralPath $props -Raw)).Project.PropertyGroup
+            $prefix = $group.VersionPrefix
+            $suffix = $group.VersionSuffix
+            $part = $prefix.Split('.')
+            $code = [int]$part[0] * 10000 + [int]$part[1] * 100 + [int]$part[2]
+            $name = if ($suffix) { "$prefix-$suffix" } else { $prefix }
+            $presets = Join-Path $env:PROJECT_DIR "export_presets.cfg"
+            $text = Get-Content -LiteralPath $presets -Raw
+            $android = [regex]::Match($text, '(?ms)^\[preset\.(\d+)\]\s*?
+name="Android"')
+            if (-not $android.Success) { throw "No Android preset in $presets." }
+            $header = "[preset.$($android.Groups[1].Value).options]"
+            $text = $text.Replace($header, "$header`nversion/code=$code`nversion/name=`"$name`"")
+            Set-Content -LiteralPath $presets $text -NoNewline
+          }
+
           $sdk = $env:ANDROID_HOME
           if (-not $sdk) { $sdk = $env:ANDROID_SDK_ROOT }
           $settings = Join-Path $env:APPDATA "Godot/editor_settings-$godotVersion.tres"

@@ -138,9 +138,9 @@ jobs:
           $settings = Join-Path $env:APPDATA "Godot/editor_settings-$godotVersion.tres"
           @(
             '[gd_resource type="EditorSettings" format=3]', '', '[resource]',
-            ('export/android/java_sdk_path = "{0}"' -f ($jdk -replace '\', '/')),
-            ('export/android/android_sdk_path = "{0}"' -f ($sdk -replace '\', '/')),
-            ('export/android/debug_keystore = "{0}"' -f ($debug -replace '\', '/')),
+            ('export/android/java_sdk_path = "{0}"' -f ($jdk -replace '[\\]', '/')),
+            ('export/android/android_sdk_path = "{0}"' -f ($sdk -replace '[\\]', '/')),
+            ('export/android/debug_keystore = "{0}"' -f ($debug -replace '[\\]', '/')),
             'export/android/debug_keystore_user = "androiddebugkey"',
             'export/android/debug_keystore_pass = "android"'
           ) | Set-Content $settings

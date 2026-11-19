@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ""
+      zip-each:
+        description: "With artifact-pattern: one zip per artifact (<artifact>_<tag>.zip) instead of one zip of them all, so a user downloads only the build they need"
+        required: false
+        type: boolean
+        default: false
       version-file:
         description: "Repository file carrying VersionPrefix/VersionSuffix; when set, the tag must equal v<prefix>[-<suffix>]"
         required: false
@@ -96,12 +101,25 @@ jobs:
         run: find build -type f \( -name '*.x86_64' -o -name '*.x86_32' -o -name '*.arm64' -o -name '*.arm32' -o -name '*.rv64' \) -exec chmod +x {} +
 
       - name: Zip binaries
+        env:
+          TAG: ${{ inputs.tag }}
+          ZIP_EACH: ${{ inputs.zip-each }}
+          PATTERN: ${{ inputs.artifact-pattern }}
+          PRODUCT: ${{ inputs.product-name }}
         run: |
-          PRODUCT="${{ inputs.product-name }}"
-          if [ -z "$PRODUCT" ]; then PRODUCT="${GITHUB_REPOSITORY#*/}"; fi
-          ZIP_NAME="${PRODUCT}_${{ inputs.tag }}.zip"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
-          (cd build && zip -r "../$ZIP_NAME" .)
+          mkdir assets
+          if [ "$ZIP_EACH" = "true" ]; then
+            [ -n "$PATTERN" ] || { echo "::error::zip-each needs artifact-pattern, whose artifacts each get a folder of their own."; exit 1; }
+            # each zip keeps its folder, so it unpacks into one
+            for dir in build/*/; do
+              name="$(basename "$dir")"
+              (cd build && zip -qr "../assets/${name}_${TAG}.zip" "$name")
+            done
+          else
+            if [ -z "$PRODUCT" ]; then PRODUCT="${GITHUB_REPOSITORY#*/}"; fi
+            (cd build && zip -qr "../assets/${PRODUCT}_${TAG}.zip" .)
+          fi
+          ls -l assets
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -113,7 +131,7 @@ jobs:
           make_latest: ${{ steps.kind.outputs.prerelease == 'true' && 'false' || '' }}
           draft: false
           generate_release_notes: true
-          files: ${{ env.ZIP_NAME }}
+          files: assets/*.zip
           token: ${{ secrets.release-token || secrets.GITHUB_TOKEN }}
 
       # Prereleases and stable releases are pruned as separate pools, so a run of dev releases

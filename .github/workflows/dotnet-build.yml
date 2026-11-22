@@ -101,7 +101,7 @@ jobs:
         with:
           name: binaries
           path: "${{ inputs.binaries-path }}/${{ inputs.configuration }}"
-          retention-days: 90
+          retention-days: 1 # only the jobs of this run download it
           # A multi-project solution has no single root output dir; skip quietly
           # instead of warning when the path matches nothing.
           if-no-files-found: ignore
@@ -112,4 +112,4 @@ jobs:
         with:
           name: packages
           path: "${{ inputs.packages-dir }}"
-          retention-days: 90
+          retention-days: 1 # only the jobs of this run download it

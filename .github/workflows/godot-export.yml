@@ -188,4 +188,4 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ runner.temp }}/export
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 1 # only the jobs of this run download it

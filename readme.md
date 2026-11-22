@@ -30,7 +30,7 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 
 | Workflow | Purpose | Key inputs |
 | --- | --- | --- |
-| `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional pack + artifacts | `solution`, `configuration`, `artifacts` |
+| `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional non-blocking `dotnet format` report (`format-check`), optional pack + artifacts | `solution`, `configuration`, `artifacts`, `format-check` |
 | `github-release.yml` | Verify the tag against the version file (opt-in), zip the `binaries` artifact (or, with `artifact-pattern`, every matching artifact in a folder of its own) as `<product>_<tag>.zip`, or with `zip-each` one `<artifact>_<tag>.zip` per artifact, with Linux binaries kept executable, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file`, `artifact-pattern`, `zip-each` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-export.yml` | Export a Godot .NET project on Windows with the Godot version its `Godot.NET.Sdk` names, through the repository's ai-kit `cmd/Export-Project.ps1` (fails on Godot errors or a missing project assembly); upload the exported files as an artifact (`binaries` feeds `github-release.yml`) | `project-dir`, `preset`, `artifact-name`; the `Android` preset builds through Gradle (optional secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_USER`, `ANDROID_KEYSTORE_PASSWORD`; without them a throwaway key signs) |
@@ -108,7 +108,7 @@ caller so each reusable workflow stays single-purpose and flat:
 jobs:
   build:
     uses: jirikostiha/ci/.github/workflows/dotnet-build.yml@v1
-    with: { solution: ./src/smath.slnx, configuration: Release, artifacts: true }
+    with: { solution: ./src/smath.slnx, configuration: Release, artifacts: true, format-check: true }
   release:
     needs: build
     uses: jirikostiha/ci/.github/workflows/github-release.yml@v1

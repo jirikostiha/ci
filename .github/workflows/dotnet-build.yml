@@ -30,6 +30,10 @@ on:
         description: "Output directory for nupkg files"
         type: string
         default: "packages"
+      format-check:
+        description: "Report what dotnet format would change (release gate; reuses this job's restore; non-blocking like the lint-action check it replaces)"
+        type: boolean
+        default: false
     secrets:
       NUGET_GH_TOKEN:
         description: "Token that reads the owner's GitHub Packages NuGet feed; see readme.md, Private NuGet feed"
@@ -56,6 +60,11 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore "${{ inputs.solution }}"
+
+      - name: Format check
+        if: inputs.format-check
+        continue-on-error: true
+        run: dotnet format "${{ inputs.solution }}" --verify-no-changes --no-restore
 
       - name: Build ${{ inputs.configuration }}
         run: dotnet build "${{ inputs.solution }}" --no-restore -c ${{ inputs.configuration }} -p:ContinuousIntegrationBuild=true

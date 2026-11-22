@@ -30,8 +30,8 @@ Breaking changes ship as a new major (`v2`) and require an explicit bump; the
 
 | Workflow | Purpose | Key inputs |
 | --- | --- | --- |
-| `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional non-blocking `dotnet format` report (`format-check`), optional pack + artifacts (kept 1 day: only the same run uses them) | `solution`, `configuration`, `artifacts`, `format-check` |
-| `github-release.yml` | Verify the tag against the version file (opt-in), zip the `binaries` artifact (or, with `artifact-pattern`, every matching artifact in a folder of its own) as `<product>_<tag>.zip`, or with `zip-each` one `<artifact>_<tag>.zip` per artifact, with Linux binaries kept executable, create GitHub release, prune old | `tag`, `product-name`, `keep-latest`, `version-file`, `artifact-pattern`, `zip-each` |
+| `dotnet-build.yml` | Restore, build, test (VSTest, or Microsoft.Testing.Platform when `global.json` selects that runner), optional non-blocking `dotnet format` report (`format-check`), optional pack + artifacts (kept 1 day: only the same run uses them; `binaries` only with `binaries-path`) | `solution`, `configuration`, `artifacts`, `binaries-path`, `format-check` |
+| `github-release.yml` | Verify the tag against the version file (opt-in), zip the `binaries` artifact (or, with `artifact-pattern`, every matching artifact in a folder of its own) as `<product>_<tag>.zip`, or with `zip-each` one `<artifact>_<tag>.zip` per artifact, with Linux binaries kept executable, create GitHub release (a library passes `attach-binaries: false`: its NuGet package already carries the binaries), prune old | `tag`, `product-name`, `keep-latest`, `version-file`, `artifact-pattern`, `zip-each`, `attach-binaries` |
 | `github-publish.yml` | Push `packages` artifact to GitHub Packages (via `GITHUB_TOKEN`) | `packages-dir`, `environment` |
 | `godot-export.yml` | Export a Godot .NET project on Windows with the Godot version its `Godot.NET.Sdk` names, through the repository's ai-kit `cmd/Export-Project.ps1` (fails on Godot errors or a missing project assembly); upload the exported files as an artifact (`binaries` feeds `github-release.yml`) | `project-dir`, `preset`, `artifact-name`; the `Android` preset builds through Gradle (optional secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_USER`, `ANDROID_KEYSTORE_PASSWORD`; without them a throwaway key signs) |
 | `godot-publish.yml` | Publish/update asset in Godot Asset Library | `username`, `asset-id`, `asset-template` |
@@ -112,7 +112,7 @@ jobs:
   release:
     needs: build
     uses: jirikostiha/ci/.github/workflows/github-release.yml@v1
-    with: { tag: ${{ github.ref_name }} }
+    with: { tag: ${{ github.ref_name }}, attach-binaries: false }
   publish:
     needs: release
     uses: jirikostiha/ci/.github/workflows/github-publish.yml@v1

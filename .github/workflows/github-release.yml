@@ -1,4 +1,4 @@
-name: GitHub release # reusable: zip the "binaries" artifact and publish a release
+name: GitHub release # reusable: publish a release, optionally with the zipped "binaries" artifact
 
 on:
   workflow_call:
@@ -26,6 +26,10 @@ on:
         required: false
         type: boolean
         default: false
+      attach-binaries:
+        description: "Zip the binaries artifact(s) into the release; false for a library, whose NuGet package already carries them"
+        type: boolean
+        default: true
       version-file:
         description: "Repository file carrying VersionPrefix/VersionSuffix; when set, the tag must equal v<prefix>[-<suffix>]"
         required: false
@@ -81,7 +85,7 @@ jobs:
         run: echo "prerelease=$(jq -nr --arg tag "$TAG" "\$tag | $IS_PRERELEASE")" >> "$GITHUB_OUTPUT"
 
       - name: Download artifact - binaries
-        if: inputs.artifact-pattern == ''
+        if: inputs.attach-binaries && inputs.artifact-pattern == ''
         uses: actions/download-artifact@v8
         with:
           name: binaries
@@ -89,7 +93,7 @@ jobs:
 
       # Without merge-multiple every matching artifact lands in a folder of its own name.
       - name: Download artifacts - ${{ inputs.artifact-pattern }}
-        if: inputs.artifact-pattern != ''
+        if: inputs.attach-binaries && inputs.artifact-pattern != ''
         uses: actions/download-artifact@v8
         with:
           pattern: ${{ inputs.artifact-pattern }}
@@ -98,9 +102,11 @@ jobs:
       # Artifacts drop file permissions, so a Linux export would unzip without its executable bit.
       # Godot names its Linux binaries after the architecture.
       - name: Restore executable bit - Linux binaries
+        if: inputs.attach-binaries
         run: find build -type f \( -name '*.x86_64' -o -name '*.x86_32' -o -name '*.arm64' -o -name '*.arm32' -o -name '*.rv64' \) -exec chmod +x {} +
 
       - name: Zip binaries
+        if: inputs.attach-binaries
         env:
           TAG: ${{ inputs.tag }}
           ZIP_EACH: ${{ inputs.zip-each }}
@@ -131,7 +137,7 @@ jobs:
           make_latest: ${{ steps.kind.outputs.prerelease == 'true' && 'false' || '' }}
           draft: false
           generate_release_notes: true
-          files: assets/*.zip
+          files: ${{ inputs.attach-binaries && 'assets/*.zip' || '' }}
           token: ${{ secrets.release-token || secrets.GITHUB_TOKEN }}
 
       # Prereleases and stable releases are pruned as separate pools, so a run of dev releases

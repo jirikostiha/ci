@@ -23,9 +23,9 @@ on:
         type: boolean
         default: false
       binaries-path:
-        description: "Directory holding the compiled output to upload (config appended)"
+        description: "Directory holding the compiled output to upload (config appended); empty uploads none"
         type: string
-        default: "bin"
+        default: ""
       packages-dir:
         description: "Output directory for nupkg files"
         type: string
@@ -96,15 +96,12 @@ jobs:
         run: dotnet pack "${{ inputs.solution }}" --no-build -c ${{ inputs.configuration }} -o "${{ inputs.packages-dir }}" -p:ContinuousIntegrationBuild=true
 
       - name: Upload artifact - binaries
-        if: inputs.artifacts
+        if: inputs.artifacts && inputs.binaries-path != ''
         uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: "${{ inputs.binaries-path }}/${{ inputs.configuration }}"
           retention-days: 1 # only the jobs of this run download it
-          # A multi-project solution has no single root output dir; skip quietly
-          # instead of warning when the path matches nothing.
-          if-no-files-found: ignore
 
       - name: Upload artifact - packages
         if: inputs.artifacts

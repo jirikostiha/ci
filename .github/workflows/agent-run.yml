@@ -39,7 +39,7 @@ jobs:
         If the issue is unclear or cannot be done, make no commit and explain why in a comment on the issue.
     steps:
       # The token is not persisted in .git/config: the agent can run git commands and must not be able to read it.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ inputs.repository }}
           token: ${{ secrets.AGENT_TOKEN }}

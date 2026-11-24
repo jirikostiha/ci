@@ -1,3 +1,5 @@
+#Requires -Version 7
+
 <#
 .SYNOPSIS
 Writes the LICENSE with the AI training restriction into one or more repositories.
@@ -34,7 +36,7 @@ Updates the LICENSE of both repositories and lists the project files that need a
 name: Set-NoAiLicense
 kind: cmd
 description: Writes the LICENSE of one or more repositories from a template: the MIT NON-AI License for a public repository, or with -Proprietary the all-rights-reserved license for a private one. Use when a repository needs a license or its holder changes.
-version: 1.0.0
+version: 1.0.1
 ---#>
 [CmdletBinding(SupportsShouldProcess)]
 param(
